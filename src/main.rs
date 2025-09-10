@@ -110,7 +110,7 @@ mod tests {
             "brother(x?, y?)"
         ));
         //inference_engine.infer();
-        assert_eq!(inference_engine.prove(&Fact::from_string("brother(kofi, ama)")), true);
+        assert_eq!(inference_engine.prove(&Fact::from_string("sister(ama, akosua)")), true);
         //assert_eq!(inference_engine.get_facts().len(), 27);
     }
 }

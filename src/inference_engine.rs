@@ -60,7 +60,7 @@ impl InferenceEngine {
                 for (term1, term2) in predicate1.terms.iter().zip(predicate2.terms.iter()) {
                     let argument_substitution: HashMap<String, Fact> = self.unify(term1, term2);
                     if argument_substitution.is_empty() { return HashMap::new(); }
-                    let combined_substitution: Option<HashMap<String, Fact>> = self.combine_substitutions(&substitutions, &argument_substitution);
+                    let combined_substitution: Option<HashMap<String, Fact>> = self.combine_substitutions(&substitutions, argument_substitution);
                     if let Some(combined) = combined_substitution {
                         substitutions = combined;
                     } else {
@@ -72,13 +72,14 @@ impl InferenceEngine {
             _ => HashMap::new(),
         }
     }
-    fn combine_substitutions(&self, substitution1: &HashMap<String, Fact>, substitution2: &HashMap<String, Fact>) -> Option<HashMap<String, Fact>> {
+    fn combine_substitutions(&self, substitution1: &HashMap<String, Fact>, substitution2: HashMap<String, Fact>) -> Option<HashMap<String, Fact>> {
         let mut combined: HashMap<String, Fact> = substitution1.clone();
         for (key, value) in substitution2 {
-            if let Some(existing) = combined.get(key) {
-                if !existing.equals(value) { return None; }
+            if let Some(existing) = combined.get(&key) {
+                if !existing.equals(&value) { return None; }
             } else {
-                combined.insert(key.clone(), value.clone());
+                if combined.values().any(|fact| fact.equals(&value)) { return None; }
+                combined.insert(key, value);
             }
         }
         Some(combined)
@@ -108,7 +109,7 @@ impl InferenceEngine {
             //println!("unify: {} + {}", antecedent, fact);
             let unified_substitution: HashMap<String, Fact> = self.unify(antecedent, fact);
             if !unified_substitution.is_empty() {
-                if let Some(combined_substitution) = self.combine_substitutions(&unified_substitution, current_substitution) {
+                if let Some(combined_substitution) = self.combine_substitutions(&current_substitution, unified_substitution) {
                     let further_substitutions: Vec<HashMap<String, Fact>> = self.find_valid_substitutions(antecedents, index + 1, &combined_substitution);
                     valid_substitutions.extend(further_substitutions);
                 }
@@ -150,7 +151,7 @@ impl InferenceEngine {
                             //println!("unify existing: {} + {}", existing_fact, substituted_antecedent);
                             let unified_substitution: HashMap<String, Fact> = engine.unify(&existing_fact, &partially_substituted_antecedent);
                             if !unified_substitution.is_empty() {
-                                if let Some(combined_substitution) = engine.combine_substitutions(&antecedent_substitution, &unified_substitution) {
+                                if let Some(combined_substitution) = engine.combine_substitutions(&antecedent_substitution, unified_substitution) {
                                     antecedent_substitution = combined_substitution;
                                 }
                             }
@@ -171,7 +172,10 @@ impl InferenceEngine {
         }
         let mut proven_facts: Vec<Fact> = Vec::new();
         if process(self, fact, &mut proven_facts) {
-            for fact in proven_facts { self.add_fact(fact); }
+            for fact in proven_facts {
+                println!("Proved new fact: {}", fact);
+                self.add_fact(fact);
+            }
             true
         } else {
             false
