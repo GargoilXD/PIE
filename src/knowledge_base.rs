@@ -88,12 +88,26 @@ pub enum Fact {
     Variable(Variable),
 }
 impl Fact {
+    pub fn is_negative(&self) -> bool {
+        match self {
+            Fact::Atomic(atomic) => !atomic.positive,
+            Fact::Predicate(predicate) => !predicate.positive,
+            Fact::Variable(_) => false
+        }
+    }
     #[allow(dead_code)]
     pub fn negate(&mut self) {
         match self {
             Fact::Atomic(atomic) => atomic.negate(),
             Fact::Predicate(predicate) => predicate.negate(),
             Fact::Variable(_) => {}
+        }
+    }
+    pub fn get_negated(&self) -> Fact {
+        match self {
+            Fact::Atomic(atomic) => Fact::Atomic(atomic.get_negated()),
+            Fact::Predicate(predicate) => Fact::Predicate(predicate.get_negated()),
+            Fact::Variable(_) => self.clone()
         }
     }
     pub fn from_string(string: &str) -> Self {
@@ -128,6 +142,9 @@ impl AtomicFact {
     pub fn negate(&mut self) {
         self.positive = !self.positive;
     }
+    pub fn get_negated(&self) -> Self {
+        AtomicFact::new(self.name.clone(), !self.positive)
+    }
     pub fn from_string(string: &str) -> Self {
         let (positive, name) = if string.starts_with('!') {
             (false, string[1..].to_string())
@@ -155,6 +172,9 @@ impl PredicateFact {
     }
     pub fn negate(&mut self) {
         self.positive = !self.positive;
+    }
+    pub fn get_negated(&self) -> Self {
+        PredicateFact::new(self.name.clone(), self.terms.clone(), !self.positive)
     }
     pub fn from_string(string: &str) -> Self {
         let (positive, rest) = if string.starts_with('!') {
