@@ -18,12 +18,8 @@ fn main() {
         )
     );
     let fact: knowledge_base::Fact = knowledge_base::Fact::from_string("alert_defenses(northern_base)");
-    if false {
-        inference_engine.infer();
-        println!("has_fact: {}? {}", fact, inference_engine.query(&fact).len() > 0);
-    } else {
-        println!("{} is {}", fact, inference_engine.prove(&fact));
-    }
+    if true { inference_engine.infer(); } else { inference_engine.prove(&fact); }
+    println!("query: {}\n{}", fact, inference_engine.query(&fact));
 }
 
 #[cfg(test)]
