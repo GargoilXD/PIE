@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
-use crate::fact::*;
-use crate::knowledge_base::KnowledgeBase;
+use crate::knowledge_base::*;
 
 pub struct InferenceEngine {
     pub knowledge_base: KnowledgeBase,
