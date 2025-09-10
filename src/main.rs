@@ -10,18 +10,19 @@ fn main() {
     let mut inference_engine: InferenceEngine = InferenceEngine::new(
         KnowledgeBase::from_strings(
             vec![
-                "parent(john, mary)",
-                "parent(mary, alice)"
+                "linda",
+                "is_student(linda)",
+                "has_car(linda)"
             ],
             vec![
-                (&vec!["parent(x?, y?)", "parent(y?, z?)"], "grandparent(x?, z?)")
+                (&vec!["has_car(x?)"], "has_ticket(x?)")
             ]
         )
     );
-    let fact: knowledge_base::Fact = knowledge_base::Fact::from_string("grandparent(john, alice)");
+    let fact: knowledge_base::Fact = knowledge_base::Fact::from_string("has_ticket(linda)");
     if true {
         inference_engine.infer();
-        println!("has_fact: {}? {}", fact, inference_engine.knowledge_base.has_fact(&fact));
+        println!("has_fact: {}? {}", fact, inference_engine.query(&fact).len() > 0);
     } else {
         println!("{} is {}", fact, inference_engine.prove(&fact));
     }
@@ -62,7 +63,7 @@ mod tests {
             )
         );
         inference_engine.infer();
-        assert_eq!(inference_engine.knowledge_base.all_facts().len(), 3);
+        assert_eq!(inference_engine.query(&Fact::from_string("should_attack")).len() > 0, true);
     }
     #[test]
     fn test3() {

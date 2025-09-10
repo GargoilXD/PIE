@@ -1,65 +1,56 @@
-use std::fmt;
+use std::{collections::HashSet, fmt};
 
 pub struct KnowledgeBase {
-    axiomatic_facts: Vec<Fact>,
+    axiomatic_facts: HashSet<Fact>,
+    working_memory: HashSet<Fact>,
     axiomatic_rules: Vec<Rule>,
-    derived_facts: Vec<Fact>,
-    derived_rules: Vec<Rule>
+    //derived_rules: Vec<Rule>
 }
 impl KnowledgeBase {
     pub fn new() -> Self {
         KnowledgeBase {
-            axiomatic_facts: Vec::new(),
+            axiomatic_facts: HashSet::new(),
+            working_memory: HashSet::new(),
             axiomatic_rules: Vec::new(),
-            derived_facts: Vec::new(),
-            derived_rules: Vec::new()
+            //derived_rules: Vec::new()
         }
     }
     pub fn add_axiomatic_fact(&mut self, fact: Fact) {
-        if !self.axiomatic_facts.iter().any(|f| f.equals(&fact)) {
-            self.axiomatic_facts.push(fact);
-        }
+        self.axiomatic_facts.insert(fact);
     }
     pub fn add_axiomatic_rule(&mut self, rule: Rule) {
-        if !self.axiomatic_rules.iter().any(|r| r.equals(&rule)) {
-            self.axiomatic_rules.push(rule);
-        }
+        self.axiomatic_rules.push(rule);
     }
-    pub fn add_derived_fact(&mut self, fact: Fact) {
-        if !self.derived_facts.iter().any(|f| f.equals(&fact)) {
-            self.derived_facts.push(fact);
-        }
+    pub fn add_fact(&mut self, fact: Fact) {
+        self.working_memory.insert(fact);
     }
-    #[allow(dead_code)]
-    pub fn add_derived_rule(&mut self, rule: Rule) {
+    /*pub fn add_derived_rule(&mut self, rule: Rule) {
         if !self.derived_rules.iter().any(|r| r.equals(&rule)) {
             self.derived_rules.push(rule);
         }
+    }*/
+    pub fn get_facts(&self) -> impl Iterator<Item = &Fact> {
+        self.axiomatic_facts.union(&self.working_memory)
     }
-    pub fn all_facts(&self) -> Vec<&Fact> {
-        self.axiomatic_facts.iter().chain(self.derived_facts.iter()).collect()
-    }
-    pub fn all_rules(&self) -> Vec<&Rule> {
-        self.axiomatic_rules.iter().chain(self.derived_rules.iter()).collect()
+    pub fn get_rules(&self) -> impl Iterator<Item = &Rule> {
+        self.axiomatic_rules.iter()
     }
     pub fn has_fact(&self, fact: &Fact) -> bool {
-        self.all_facts().iter().any(|existing_fact| existing_fact.equals(fact))
+        self.axiomatic_facts.contains(fact) || self.working_memory.contains(fact)
     }
     #[allow(dead_code)]
     pub fn has_rule(&self, rule: &Rule) -> bool {
-        self.all_rules().iter().any(|existing_rule| existing_rule.equals(rule))
+        self.axiomatic_rules.contains(rule)
     }
     #[allow(dead_code)]
-    pub fn clear_derived(&mut self) {
-        self.derived_facts.clear();
-        self.derived_rules.clear();
+    pub fn clear_working_memory(&mut self) {
+        self.working_memory.clear();
     }
     #[allow(dead_code)]
     pub fn clear(&mut self) {
         self.axiomatic_facts.clear();
         self.axiomatic_rules.clear();
-        self.derived_facts.clear();
-        self.derived_rules.clear();
+        self.working_memory.clear();
     }
     pub fn from_strings(facts: Vec<&str>, rules: Vec<(&Vec<&str>, &str)>) -> Self {
         let mut knowledge_base: KnowledgeBase = KnowledgeBase::new();
@@ -82,19 +73,15 @@ impl fmt::Display for KnowledgeBase {
         for rule in &self.axiomatic_rules {
             writeln!(f, "  {}", rule)?;
         }
-        writeln!(f, "Derived Facts:")?;
-        for fact in &self.derived_facts {
+        writeln!(f, "Working Memory:")?;
+        for fact in &self.working_memory {
             writeln!(f, "  {}", fact)?;
-        }
-        writeln!(f, "Derived Rules:")?;
-        for rule in &self.derived_rules {
-            writeln!(f, "  {}", rule)?;
         }
         Ok(())
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Fact {
     Atomic(AtomicFact),
     Predicate(PredicateFact),
@@ -107,14 +94,6 @@ impl Fact {
             Fact::Atomic(atomic) => atomic.negate(),
             Fact::Predicate(predicate) => predicate.negate(),
             Fact::Variable(_) => {}
-        }
-    }
-    pub fn equals(&self, other: &Fact) -> bool {
-        match (self, other) {
-            (Fact::Atomic(a), Fact::Atomic(b)) => a.equals(b),
-            (Fact::Predicate(a), Fact::Predicate(b)) => a.equals(b),
-            (Fact::Variable(a), Fact::Variable(b)) => a.equals(b),
-            _ => false
         }
     }
     pub fn from_string(string: &str) -> Self {
@@ -137,7 +116,7 @@ impl fmt::Display for Fact {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct AtomicFact {
     pub name: String,
     pub positive: bool
@@ -148,9 +127,6 @@ impl AtomicFact {
     }
     pub fn negate(&mut self) {
         self.positive = !self.positive;
-    }
-    pub fn equals(&self, other: &AtomicFact) -> bool {
-        self.name == other.name && self.positive == other.positive
     }
     pub fn from_string(string: &str) -> Self {
         let (positive, name) = if string.starts_with('!') {
@@ -167,7 +143,7 @@ impl fmt::Display for AtomicFact {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct PredicateFact {
     pub name: String,
     pub terms: Vec<Fact>,
@@ -179,12 +155,6 @@ impl PredicateFact {
     }
     pub fn negate(&mut self) {
         self.positive = !self.positive;
-    }
-    pub fn equals(&self, other: &PredicateFact) -> bool {
-        self.name == other.name &&
-        self.terms.len() == other.terms.len() &&
-        self.positive == other.positive &&
-        self.terms.iter().zip(other.terms.iter()).all(|(a, b)| a.equals(b))
     }
     pub fn from_string(string: &str) -> Self {
         let (positive, rest) = if string.starts_with('!') {
@@ -210,16 +180,13 @@ impl fmt::Display for PredicateFact {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Variable {
     pub name: String
 }
 impl Variable {
     pub fn new(name: String) -> Self {
         Variable { name }
-    }
-    pub fn equals(&self, other: &Variable) -> bool {
-        self.name == other.name
     }
     pub fn from_string(string: &str) -> Self {
         let name = if string.ends_with('?') {
@@ -236,7 +203,7 @@ impl fmt::Display for Variable {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Rule {
     pub antecedents: Vec<Fact>,
     pub consequent: Fact,
@@ -245,11 +212,11 @@ impl Rule {
     pub fn new(antecedents: Vec<Fact>, consequent: Fact) -> Self {
         Rule { antecedents, consequent }
     }
-    pub fn equals(&self, other: &Rule) -> bool {
+    /*pub fn equals(&self, other: &Rule) -> bool {
         self.antecedents.len() == other.antecedents.len() &&
         self.antecedents.iter().zip(other.antecedents.iter()).all(|(a, b)| a.equals(b)) &&
         self.consequent.equals(&other.consequent)
-    }
+    }*/
     pub fn from_string(antecedent_strings: Vec<&str>, consequence_strings: &str) -> Self {
         let antecedent = antecedent_strings.into_iter().map(|s| Fact::from_string(s)).collect();
         let consequent = Fact::from_string(consequence_strings);

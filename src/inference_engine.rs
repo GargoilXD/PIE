@@ -12,7 +12,7 @@ impl InferenceEngine {
     fn unify(&self, fact1: &Fact, fact2: &Fact) -> HashMap<String, Fact> {
         match (fact1, fact2) {
             (Fact::Atomic(atomic_fact1), Fact::Atomic(atomic_fact2)) => {
-                if atomic_fact1.equals(atomic_fact2) {
+                if atomic_fact1 == atomic_fact2 {
                     HashMap::from([(atomic_fact1.name.clone(), Fact::Atomic(atomic_fact1.clone()))])
                 } else {
                     HashMap::new()
@@ -54,9 +54,9 @@ impl InferenceEngine {
         let mut combined: HashMap<String, Fact> = substitution1.clone();
         for (key, value) in substitution2 {
             if let Some(existing) = combined.get(&key) {
-                if !existing.equals(&value) { return None; }
+                if existing != &value { return None; }
             } else {
-                if combined.values().any(|fact| fact.equals(&value)) { return None; }
+                if combined.values().any(|fact| fact == &value) { return None; }
                 combined.insert(key, value);
             }
         }
@@ -83,7 +83,7 @@ impl InferenceEngine {
         if index >= antecedents.len() { return vec![current_substitution.clone()]; }
         let antecedent: &Fact = &antecedents[index];
         let mut valid_substitutions: Vec<HashMap<String, Fact>> = Vec::new();
-        for fact in &self.knowledge_base.all_facts() {
+        for fact in self.knowledge_base.get_facts() {
             //println!("unify: {} + {}", antecedent, fact);
             let unified_substitution: HashMap<String, Fact> = self.unify(antecedent, fact);
             if !unified_substitution.is_empty() {
@@ -100,24 +100,24 @@ impl InferenceEngine {
         while changed {
             changed = false;
             let mut newly_inferred: Vec<Fact> = Vec::new();
-            for rule in &self.knowledge_base.all_rules() {
+            for rule in self.knowledge_base.get_rules() {
                 let valid_substitutions: Vec<HashMap<String, Fact>> = self.find_valid_substitutions(&rule.antecedents, 0, &HashMap::new());
                 for substitution in valid_substitutions {
                     let new_fact: Fact = self.apply_substitution(&rule.consequent, &substitution);
-                    if !self.knowledge_base.has_fact(&new_fact) && !newly_inferred.iter().any(|f| f.equals(&new_fact)) {
+                    if !self.knowledge_base.has_fact(&new_fact) && !newly_inferred.contains(&new_fact) {
                         println!("Inferred new fact: {}", new_fact);
                         newly_inferred.push(new_fact);
                         changed = true;
                     }
                 }
             }
-            for fact in newly_inferred { self.knowledge_base.add_derived_fact(fact); }
+            for fact in newly_inferred { self.knowledge_base.add_fact(fact); }
         }
     }
     pub fn prove(&mut self, fact: &Fact) -> bool {
         fn process(engine: &InferenceEngine, fact: &Fact, proven_facts: &mut Vec<Fact>) -> bool {
             if engine.knowledge_base.has_fact(fact) { return true; }
-            for rule in &engine.knowledge_base.all_rules() {
+            for rule in engine.knowledge_base.get_rules() {
                 //println!("unify consequent: {} + {}", rule.consequent, fact);
                 let consequent_substitution: HashMap<String, Fact> = engine.unify(&rule.consequent, fact);
                 if !consequent_substitution.is_empty() {
@@ -125,7 +125,7 @@ impl InferenceEngine {
                     for antecedent in &rule.antecedents {
                         let partially_substituted_antecedent: Fact = engine.apply_substitution(antecedent, &consequent_substitution);
                         let mut antecedent_substitution: HashMap<String, Fact> = HashMap::new();
-                        for existing_fact in &engine.knowledge_base.all_facts() {
+                        for existing_fact in engine.knowledge_base.get_facts() {
                             //println!("unify existing: {} + {}", existing_fact, substituted_antecedent);
                             let unified_substitution: HashMap<String, Fact> = engine.unify(&existing_fact, &partially_substituted_antecedent);
                             if !unified_substitution.is_empty() {
@@ -152,12 +152,31 @@ impl InferenceEngine {
         if process(self, fact, &mut proven_facts) {
             for fact in proven_facts {
                 println!("Proved new fact: {}", fact);
-                self.knowledge_base.add_derived_fact(fact);
+                self.knowledge_base.add_fact(fact);
             }
             true
         } else {
             false
         }
+    }
+    pub fn query(&self, query: &Fact) -> Vec<HashMap<String, Fact>> {
+        let mut results: Vec<HashMap<String, Fact>> = Vec::new();
+        for fact in self.knowledge_base.get_facts() {
+            //println!("unify query: {} + {}", query, fact);
+            let substitution: HashMap<String, Fact> = self.unify(query, fact);
+            if !substitution.is_empty() {
+                results.push(substitution);
+            }
+        }
+        for fact in self.knowledge_base.get_facts() {
+            //println!("unify query: {} + {}", query, fact);
+            let substitution: HashMap<String, Fact> = self.unify(query, fact);
+            if !substitution.is_empty() {
+                results.push(substitution);
+            }
+        }
+        //println!("results for {}: {:?}", query, results);
+        results
     }
 }
 
