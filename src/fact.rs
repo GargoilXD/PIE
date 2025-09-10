@@ -87,6 +87,7 @@ impl PredicateFact {
         self.positive = !self.positive;
     }
     pub fn equals(&self, other: &PredicateFact) -> bool {
+        self.name == other.name &&
         self.terms.len() == other.terms.len() &&
         self.positive == other.positive &&
         self.terms.iter().zip(other.terms.iter()).all(|(a, b)| a.equals(b))

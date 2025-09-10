@@ -11,21 +11,17 @@ use std::vec;
 
 fn main() {
     let mut inference_engine: InferenceEngine = InferenceEngine::new();
-    inference_engine.add_fact(Fact::from_string("player_nearby"));
-    inference_engine.add_fact(Fact::from_string("!has_ammo"));
+    inference_engine.add_fact(Fact::from_string("parent(john, mary)"));
+    inference_engine.add_fact(Fact::from_string("parent(mary, alice)"));
     inference_engine.add_rule(
         Rule::from_string(
-            vec!["player_nearby", "has_ammo"],
-            "attack"
+            vec!["parent(x?, y?)", "parent(y?, z?)"],
+            "grandparent(x?, z?)"
         )
     );
-    inference_engine.add_rule(
-        Rule::from_string(
-            vec!["player_nearby", "!has_ammo"],
-            "retreat"
-        )
-    );
-    inference_engine.infer();
+    //inference_engine.infer();
+    let fact: Fact = Fact::from_string("grandparent(john, alice)");
+    println!("{} is {}", fact, inference_engine.prove(&fact));
 }
 
 #[cfg(test)]
@@ -113,7 +109,8 @@ mod tests {
             vec!["person(x?, male)", "mother(z?, x?)", "mother(z?, y?)"],
             "brother(x?, y?)"
         ));
-        inference_engine.infer();
-        assert_eq!(inference_engine.get_facts().len(), 27);
+        //inference_engine.infer();
+        assert_eq!(inference_engine.prove(&Fact::from_string("brother(kofi, ama)")), true);
+        //assert_eq!(inference_engine.get_facts().len(), 27);
     }
 }
