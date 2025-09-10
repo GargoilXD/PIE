@@ -47,7 +47,7 @@ impl InferenceEngine {
                 }
             }
             for rule in engine.knowledge_base.get_rules() {
-                println!("unify consequent: {} + {}", rule.consequent, fact);
+                //println!("unify consequent: {} + {}", rule.consequent, fact);
                 let consequent_substitution: HashMap<String, Fact> = engine.unify(&rule.consequent, fact);
                 if !consequent_substitution.is_empty() {
                     let mut all_antecedents_proven: bool = true;
@@ -55,7 +55,7 @@ impl InferenceEngine {
                         let partially_substituted_antecedent: Fact = engine.apply_substitution(antecedent, &consequent_substitution);
                         let mut antecedent_substitution: HashMap<String, Fact> = HashMap::new();
                         for existing_fact in engine.knowledge_base.get_facts() {
-                            println!("unify antecedent: {} + {}", partially_substituted_antecedent, existing_fact);
+                            //println!("unify antecedent: {} + {}", partially_substituted_antecedent, existing_fact);
                             let unified_substitution: HashMap<String, Fact> = engine.unify(&partially_substituted_antecedent, &existing_fact);
                             if !unified_substitution.is_empty() {
                                 if let Some(combined_substitution) = engine.combine_substitutions(&antecedent_substitution, unified_substitution) {
@@ -167,7 +167,7 @@ impl InferenceEngine {
         match (fact1, fact2) {
             (Fact::Atomic(atomic_fact1), Fact::Atomic(atomic_fact2)) => {
                 if atomic_fact1 == atomic_fact2 {
-                    HashMap::from([(atomic_fact1.name.clone(), Fact::Atomic(atomic_fact1.clone()))])
+                    HashMap::from([(atomic_fact1.to_string(), Fact::Atomic(atomic_fact1.clone()))])
                 }/* else if atomic_fact1.name == atomic_fact2.name {
                     HashMap::new()
                 } */ else {
