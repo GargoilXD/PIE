@@ -10,18 +10,21 @@ fn main() {
     let mut inference_engine: InferenceEngine = InferenceEngine::new(
         KnowledgeBase::from_strings(
             vec![
-                "!player_nearby",
-                "has_ammo"
+                "parent(john, mary)",
+                "parent(mary, alice)",
             ],
             vec![
-                ("player_nearby OR has_ammo", "should_attack")
+                ("parent(x?, y?)", "grandparent(x?, z?)")
             ]
         )
     );
+    let expected: knowledge_base::Fact = knowledge_base::Fact::from_string("grandparent(john, alice)");
     inference_engine.set_debug(false);
-    let fact: knowledge_base::Fact = knowledge_base::Fact::from_string("should_attack");
-    if false { /*inference_engine.infer();*/ } else { inference_engine.prove(&fact); }
-    println!("query: {}\n{}", fact, inference_engine.query(&fact));
+    inference_engine.infer();
+    println!("query after inference: {}\n{}", expected, inference_engine.query(&expected));
+    inference_engine.knowledge_base.clear_working_memory();
+    inference_engine.prove(&expected);
+    println!("query after proof: {}\n{}", expected, inference_engine.query(&expected));
 }
 
 #[cfg(test)]

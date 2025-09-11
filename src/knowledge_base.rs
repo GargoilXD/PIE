@@ -264,13 +264,17 @@ impl Rule {
         fn tokenize(input: &str) -> Vec<String> {
             let mut tokens: Vec<String> = Vec::new();
             let mut current_token: String = String::new();
+            let mut comma_space = false;
             for ch in input.chars() {
                 match ch {
                     ' ' | '\t' | '\n' => {
-                        if !current_token.is_empty() {
-                            tokens.push(current_token.clone());
-                            current_token.clear();
+                        if !comma_space {
+                            if !current_token.is_empty() {
+                                tokens.push(current_token.clone());
+                                current_token.clear();
+                            }
                         }
+                        comma_space = false;
                     }
                     '[' | ']' => {
                         if !current_token.is_empty() {
@@ -278,8 +282,16 @@ impl Rule {
                             current_token.clear();
                         }
                         tokens.push(ch.to_string());
+                        comma_space = false;
                     }
-                    _ => current_token.push(ch)
+                    ',' => {
+                        current_token.push(ch);
+                        comma_space = true
+                    }
+                    _ => {
+                        current_token.push(ch);
+                        comma_space = false;
+                    }
                 }
             }
             if !current_token.is_empty() {

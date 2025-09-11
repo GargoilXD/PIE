@@ -23,25 +23,49 @@ impl InferenceEngine {
     pub fn set_debug(&mut self, debug: bool) {
         self.debug = debug;
     }
-    /*pub fn infer(&mut self) {
+    pub fn infer(&mut self) {
         let mut changed: bool = true;
         while changed {
             changed = false;
             let mut newly_inferred: Vec<Fact> = Vec::new();
             for rule in self.knowledge_base.get_rules() {
-                let valid_substitutions: Vec<HashMap<String, Fact>> = self.find_valid_substitutions(&rule.antecedents, 0, &HashMap::new());
-                for substitution in valid_substitutions {
-                    let new_fact: Fact = self.apply_substitution(&rule.consequent, &substitution);
-                    if !self.knowledge_base.has_fact(&new_fact) && !newly_inferred.contains(&new_fact) {
-                        if self.debug { println!("Inferred new fact: {}", new_fact); }
-                        newly_inferred.push(new_fact);
-                        changed = true;
+                let mut antecedents: Vec<Fact> = Vec::new();
+                for item in &rule.antecedents {
+                    if let AntecedentItem::Fact(fact) = item {
+                        antecedents.push(fact.clone());
+                    }
+                }
+                let valid_substitutions: Vec<HashMap<String, Fact>> = self.find_valid_substitutions(&antecedents, 0, &HashMap::new());
+                if valid_substitutions.is_empty() { continue; }
+                let all_antecedents_satisfied: bool = self.evaluate_antecedents(
+                    &rule.antecedents,
+                    &mut |antecedent: &Fact| {
+                        for valid_substitution in &valid_substitutions {
+                            let substituted_antecedent: Fact = self.apply_substitution(antecedent, valid_substitution);
+                            if self.knowledge_base.has_fact(&substituted_antecedent) { return true; }
+                            if substituted_antecedent.is_negative() {
+                                if !self.knowledge_base.has_fact(&substituted_antecedent.get_negated()) {
+                                    return true;
+                                }
+                            }
+                        }
+                        return false;
+                    }
+                );
+                if all_antecedents_satisfied {
+                    for substitution in valid_substitutions {
+                        let new_fact: Fact = self.apply_substitution(&rule.consequent, &substitution);
+                        if !self.knowledge_base.has_fact(&new_fact) && !newly_inferred.contains(&new_fact) {
+                            if self.debug { println!("Inferred new fact: {}", new_fact); }
+                            newly_inferred.push(new_fact);
+                            changed = true;
+                        }
                     }
                 }
             }
             for fact in newly_inferred { self.knowledge_base.add_fact(fact); }
         }
-    }*/
+    }
     pub fn prove(&mut self, fact: &Fact) -> bool {
         fn process(engine: &InferenceEngine, fact: &Fact, proven_facts: &mut Vec<Fact>) -> bool {
             if engine.knowledge_base.has_fact(fact) { return true; }
@@ -51,7 +75,7 @@ impl InferenceEngine {
                 }
             }
             for rule in engine.knowledge_base.get_rules() {
-                if engine.debug { println!("unify consequent: {} + {}", rule.consequent, fact); }
+                if engine.debug { println!("unify consequent: {} U {}", rule.consequent, fact); }
                 if let Some(consequent_substitution) = engine.unify(&rule.consequent, fact) {
                     let all_antecedents_proven: bool = engine.evaluate_antecedents(
                         &rule.antecedents,
@@ -59,7 +83,7 @@ impl InferenceEngine {
                             let partially_substituted_antecedent: Fact = engine.apply_substitution(antecedent, &consequent_substitution);
                             let mut antecedent_substitution: HashMap<String, Fact> = HashMap::new();
                             for existing_fact in engine.knowledge_base.get_facts() {
-                                if engine.debug { println!("unify antecedent: {} + {}", partially_substituted_antecedent, existing_fact); }
+                                if engine.debug { println!("unify antecedent: {} U {}", partially_substituted_antecedent, existing_fact); }
                                 if let Some(unified_substitution) = engine.unify(&partially_substituted_antecedent, &existing_fact) {
                                     if let Some(combined_substitution) = engine.combine_substitutions(&antecedent_substitution, unified_substitution) {
                                         antecedent_substitution = combined_substitution;
@@ -152,9 +176,11 @@ impl InferenceEngine {
                 }
             }
         }
-        if let StackItem::Value(value) = stack.pop().unwrap() { value } else { unreachable!() }
+        match stack.pop().unwrap() {
+            StackItem::Value(value) => value,
+            StackItem::Fact(fact) => fact_evaluator(fact)
+        }
     }
-    #[allow(dead_code)]
     fn find_valid_substitutions(&self, antecedents: &Vec<Fact>, index: usize, current_substitution: &HashMap<String, Fact>) -> Vec<HashMap<String, Fact>> {
         if index >= antecedents.len() { return vec![current_substitution.clone()]; }
         let antecedent: &Fact = &antecedents[index];
@@ -171,7 +197,7 @@ impl InferenceEngine {
         }
         let mut valid_substitutions: Vec<HashMap<String, Fact>> = Vec::new();
         for fact in self.knowledge_base.get_facts() {
-            if self.debug { println!("unify antecedent: {} + {}", antecedent, fact); }
+            if self.debug { println!("unify antecedent: {} U {}", antecedent, fact); }
             if let Some(unified_substitution) = self.unify(antecedent, fact) {
                 if let Some(combined_substitution) = self.combine_substitutions(&current_substitution, unified_substitution) {
                     let further_substitutions: Vec<HashMap<String, Fact>> = self.find_valid_substitutions(antecedents, index + 1, &combined_substitution);
