@@ -14,7 +14,7 @@ fn main() {
                 "parent(mary, alice)",
             ],
             vec![
-                ("parent(x?, y?)", "grandparent(x?, z?)")
+                ("parent(x?, y?) AND parent(y?, z?)", "grandparent(x?, z?)")
             ]
         )
     );

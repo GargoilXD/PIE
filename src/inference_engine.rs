@@ -12,10 +12,7 @@ use crate::knowledge_base::*;
 /// 7. The inference engine uses a depth-first search strategy for backward chaining and a breadth-first strategy for forward chaining.
 /// 8. The inference engine does not support probabilistic reasoning or uncertainty in facts or rules
 
-pub struct InferenceEngine {
-    pub knowledge_base: KnowledgeBase,
-    debug: bool
-}
+pub struct InferenceEngine { pub knowledge_base: KnowledgeBase, debug: bool }
 impl InferenceEngine {
     pub fn new(knowledge_base: KnowledgeBase) -> Self {
         InferenceEngine { knowledge_base, debug: false }
@@ -32,29 +29,39 @@ impl InferenceEngine {
                 let mut antecedents: Vec<Fact> = Vec::new();
                 for item in &rule.antecedents {
                     if let AntecedentItem::Fact(fact) = item {
+                        if let Fact::Variable(_) = fact { continue; }
                         antecedents.push(fact.clone());
                     }
                 }
                 let valid_substitutions: Vec<HashMap<String, Fact>> = self.find_valid_substitutions(&antecedents, 0, &HashMap::new());
                 if valid_substitutions.is_empty() { continue; }
-                let all_antecedents_satisfied: bool = self.evaluate_antecedents(
-                    &rule.antecedents,
-                    &mut |antecedent: &Fact| {
-                        for valid_substitution in &valid_substitutions {
-                            let substituted_antecedent: Fact = self.apply_substitution(antecedent, valid_substitution);
+                for valid_substitution in valid_substitutions {
+                    let all_antecedents_satisfied: bool = self.evaluate_antecedents(
+                        &rule.antecedents,
+                        &mut |antecedent: &Fact| {
+                            let substituted_antecedent: Fact = self.apply_substitution(antecedent, &valid_substitution);
                             if self.knowledge_base.has_fact(&substituted_antecedent) { return true; }
                             if substituted_antecedent.is_negative() {
                                 if !self.knowledge_base.has_fact(&substituted_antecedent.get_negated()) {
                                     return true;
                                 }
                             }
+                            return false;
+                        },
+                        &|left: &String, right: &String| {
+                            if let Some(left_fact) = valid_substitution.get(left) {
+                                if let Some(right_fact) = valid_substitution.get(right) {
+                                    left_fact == right_fact
+                                } else {
+                                    panic!("{} was not found", right);
+                                }
+                            } else {
+                                panic!("{} was not found", left);
+                            }
                         }
-                        return false;
-                    }
-                );
-                if all_antecedents_satisfied {
-                    for substitution in valid_substitutions {
-                        let new_fact: Fact = self.apply_substitution(&rule.consequent, &substitution);
+                    );
+                    if all_antecedents_satisfied {
+                        let new_fact: Fact = self.apply_substitution(&rule.consequent, &valid_substitution);
                         if !self.knowledge_base.has_fact(&new_fact) && !newly_inferred.contains(&new_fact) {
                             if self.debug { println!("Inferred new fact: {}", new_fact); }
                             newly_inferred.push(new_fact);
@@ -92,6 +99,17 @@ impl InferenceEngine {
                             }
                             let substituted_antecedent: Fact = engine.apply_substitution(&partially_substituted_antecedent, &antecedent_substitution);
                             process(engine, &substituted_antecedent, proven_facts)
+                        },
+                        &|left: &String, right: &String| {
+                            if let Some(left_fact) = consequent_substitution.get(left) {
+                                if let Some(right_fact) = consequent_substitution.get(right) {
+                                    left_fact == right_fact
+                                } else {
+                                    panic!("{} was not found", right);
+                                }
+                            } else {
+                                panic!("{} was not found", left);
+                            }
                         }
                     );
                     if all_antecedents_proven {
@@ -126,7 +144,8 @@ impl InferenceEngine {
             output.join(",\n")
         }
     }
-    fn evaluate_antecedents(&self, antecedents: &Vec<AntecedentItem>, fact_evaluator: &mut impl FnMut(&Fact) -> bool) -> bool {
+    fn evaluate_antecedents(&self, antecedents: &Vec<AntecedentItem>, fact_evaluator: &mut impl FnMut(&Fact) -> bool, equivalence_evaluator: &impl Fn(&String, &String) -> bool) -> bool {
+        #[derive(PartialEq, Eq)]
         enum StackItem<'s> { Fact(&'s Fact), Value(bool) }
         let mut stack: Vec<StackItem> = Vec::new();
         for item in antecedents {
@@ -150,7 +169,7 @@ impl InferenceEngine {
                     }
                     match right {
                         StackItem::Fact(fact) => stack.push(StackItem::Value(fact_evaluator(&fact))),
-                        StackItem::Value(value) => if !value { stack.push(StackItem::Value(false)) }
+                        StackItem::Value(value) => stack.push(StackItem::Value(value))
                     }
                 }
                 AntecedentItem::OR => {
@@ -171,8 +190,46 @@ impl InferenceEngine {
                     }
                     match right {
                         StackItem::Fact(fact) => stack.push(StackItem::Value(fact_evaluator(&fact))),
-                        StackItem::Value(value) => if !value { stack.push(StackItem::Value(false)) }
+                        StackItem::Value(value) => stack.push(StackItem::Value(value))
                     }
+                }
+                AntecedentItem::EQUALS => {
+                    let right: &String = match stack.pop().unwrap() {
+                        StackItem::Fact(fact) => if let Fact::Variable(Variable { name }) = fact {
+                            name
+                        } else {
+                            panic!("cannot compair facts")
+                        }
+                        _ => panic!("cannot compair facts")
+                    };
+                    let left: &String = match stack.pop().unwrap() {
+                        StackItem::Fact(fact) => if let Fact::Variable(Variable { name }) = fact {
+                            name
+                        } else {
+                            panic!("cannot compair facts")
+                        }
+                        _ => panic!("cannot compair facts")
+                    };
+                    stack.push(StackItem::Value(equivalence_evaluator(&left, &right)));
+                }
+                AntecedentItem::NOTEQUALS => {
+                    let right: &String = match stack.pop().unwrap() {
+                        StackItem::Fact(fact) => if let Fact::Variable(Variable { name }) = fact {
+                            name
+                        } else {
+                            panic!("cannot compair facts")
+                        }
+                        _ => panic!("cannot compair facts")
+                    };
+                    let left: &String = match stack.pop().unwrap() {
+                        StackItem::Fact(fact) => if let Fact::Variable(Variable { name }) = fact {
+                            name
+                        } else {
+                            panic!("cannot compair facts")
+                        }
+                        _ => panic!("cannot compair facts")
+                    };
+                    stack.push(StackItem::Value(!equivalence_evaluator(&left, &right)));
                 }
             }
         }
@@ -213,7 +270,6 @@ impl InferenceEngine {
             if let Some(existing) = combined.get(&key) {
                 if existing != &value { return None; }
             } else {
-                if combined.values().any(|fact| fact == &value) { return None; }
                 combined.insert(key, value);
             }
         }
@@ -239,18 +295,12 @@ impl InferenceEngine {
     fn unify(&self, fact1: &Fact, fact2: &Fact) -> Option<HashMap<String, Fact>> {
         match (fact1, fact2) {
             (Fact::Atomic(atomic_fact1), Fact::Atomic(atomic_fact2)) => {
-                if atomic_fact1 == atomic_fact2 {
-                    Some(HashMap::new())
-                } else {
-                    None
-                }
+                if atomic_fact1 == atomic_fact2 { Some(HashMap::new()) } else { None }
             }
             (Fact::Variable(variable1), fact) => {
-                //if matches!(fact, Fact::Variable(variable2) if variable1.name != variable2.name) { return None }
                 Some(HashMap::from([(variable1.name.clone(), fact.clone())]))
             },
             (fact, Fact::Variable(variable1)) => {
-                //if matches!(fact, Fact::Variable(variable2) if variable1.name != variable2.name) { return None; }
                 Some(HashMap::from([(variable1.name.clone(), fact.clone())]))
             },
             (Fact::Predicate(predicate1), Fact::Predicate(predicate2)) => {

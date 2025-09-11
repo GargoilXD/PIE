@@ -70,14 +70,18 @@ fn test4() {
                 "mother(ama, osei)"
             ],
             vec![
-                ("mother(x?, y?) AND mother(y?, z?)", "grandparent(x?, z?)"),
-                ("mother(y?, z?) AND mother(z?, x?)", "grandchild(x?, y?)"),
-                ("person(x?, female) AND mother(z?, x?) AND mother(z?, y?)", "sister(x?, y?)"),
-                ("person(x?, male) AND mother(z?, x?) AND mother(z?, y?)", "brother(x?, y?)")
+                //("mother(x?, y?) AND mother(y?, z?)", "grandparent(x?, z?)"),
+                //("mother(y?, z?) AND mother(z?, x?)", "grandchild(x?, y?)"),
+                ("person(x?, female) AND mother(z?, x?) AND mother(z?, y?) AND [x? != y?]", "sister(x?, y?)"),
+                //("person(x?, male) AND mother(z?, x?) AND mother(z?, y?)", "brother(x?, y?)")
             ]
         )
     );
-    assert_eq!(inference_engine.prove(&Fact::from_string("sister(ama, akosua)")), true);
+    //inference_engine.infer();
+    //for fact in inference_engine.knowledge_base.get_facts() {
+    //    println!("{}", fact);
+    //}
+    assert!(inference_engine.prove(&Fact::from_string("sister(ama, akosua)")));
 }
 #[test]
 fn test5() {

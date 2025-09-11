@@ -246,7 +246,7 @@ impl Rule {
         for item in &self.antecedents {
             match item {
                 AntecedentItem::Fact(_) => stack_height += 1,
-                AntecedentItem::AND | AntecedentItem::OR => {
+                AntecedentItem::AND | AntecedentItem::OR | AntecedentItem::EQUALS | AntecedentItem::NOTEQUALS => {
                     if stack_height < 2 {
                         panic!("Invalid postfix expression: not enough operands");
                     }
@@ -304,9 +304,9 @@ impl Rule {
             let mut operator_stack: Vec<String> = Vec::new();
             for token in tokens {
                 match token.as_str() {
-                    "AND" | "and" => {
+                    "AND" => {
                         while let Some(op) = operator_stack.last() {
-                            if op == "AND" || op == "and" || op == "OR" || op == "or" {
+                            if op == "AND" || op == "OR" || op == "==" || op == "!=" {
                                 let popped_op: String = operator_stack.pop().unwrap();
                                 output.push(token_to_antecedent_item(&popped_op));
                             } else {
@@ -315,9 +315,31 @@ impl Rule {
                         }
                         operator_stack.push(token.clone());
                     }
-                    "OR" | "or" => {
+                    "OR" => {
                         while let Some(op) = operator_stack.last() {
-                            if op == "AND" || op == "and" || op == "OR" || op == "or" {
+                            if op == "AND" || op == "OR" || op == "==" || op == "!=" {
+                                let popped_op: String = operator_stack.pop().unwrap();
+                                output.push(token_to_antecedent_item(&popped_op));
+                            } else {
+                                break;
+                            }
+                        }
+                        operator_stack.push(token.clone());
+                    }
+                    "==" => {
+                        while let Some(op) = operator_stack.last() {
+                            if op == "AND" || op == "OR" || op == "==" || op == "!=" {
+                                let popped_op: String = operator_stack.pop().unwrap();
+                                output.push(token_to_antecedent_item(&popped_op));
+                            } else {
+                                break;
+                            }
+                        }
+                        operator_stack.push(token.clone());
+                    }
+                    "!=" => {
+                        while let Some(op) = operator_stack.last() {
+                            if op == "AND" || op == "OR" || op == "==" || op == "!=" {
                                 let popped_op: String = operator_stack.pop().unwrap();
                                 output.push(token_to_antecedent_item(&popped_op));
                             } else {
@@ -345,6 +367,8 @@ impl Rule {
             match token {
                 "AND" | "and" => AntecedentItem::AND,
                 "OR" | "or" => AntecedentItem::OR,
+                "==" => AntecedentItem::EQUALS,
+                "!=" => AntecedentItem::NOTEQUALS,
                 _ => AntecedentItem::Fact(Fact::from_string(token)),
             }
         }
@@ -374,6 +398,25 @@ impl Rule {
                         stack.push("OR".to_string());
                     }
                 }
+                AntecedentItem::EQUALS => {
+                    if stack.len() >= 2 {
+                        let right: String = stack.pop().unwrap();
+                        let left: String = stack.pop().unwrap();
+                        stack.push(format!("({} EQUALS {})", left, right));
+                    } else {
+                        stack.push("EQUALS".to_string());
+                    }
+                }
+                AntecedentItem::NOTEQUALS => {
+                    if stack.len() >= 2 {
+                        let right: String = stack.pop().unwrap();
+                        let left: String = stack.pop().unwrap();
+                        stack.push(format!("({} NOTEQUALS {})", left, right));
+                    } else {
+                        stack.push("NOTEQUALS".to_string());
+                    }
+                }
+
             }
         }
         if stack.len() == 1 {
@@ -397,14 +440,16 @@ impl fmt::Display for Rule {
 #[derive(Clone, PartialEq, Eq)]
 pub enum AntecedentItem {
     Fact(Fact),
-    AND, OR
+    AND, OR, EQUALS, NOTEQUALS
 }
 impl fmt::Display for AntecedentItem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AntecedentItem::Fact(fact) => write!(f, "{}", fact),
             AntecedentItem::AND => write!(f, "AND"),
-            AntecedentItem::OR => write!(f, "OR")
+            AntecedentItem::OR => write!(f, "OR"),
+            AntecedentItem::EQUALS => write!(f, "EQUALS"),
+            AntecedentItem::NOTEQUALS => write!(f, "NOTEQUALS")
         }
     }
 }
