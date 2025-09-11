@@ -29,12 +29,11 @@ impl InferenceEngine {
                 let mut antecedents: Vec<Fact> = Vec::new();
                 for item in &rule.antecedents {
                     if let AntecedentItem::Fact(fact) = item {
-                        if let Fact::Variable(_) = fact { continue; }
+                        if let Fact::Variable(_) | Fact::Number(_) = fact { continue; }
                         antecedents.push(fact.clone());
                     }
                 }
                 let valid_substitutions: Vec<HashMap<String, Fact>> = self.find_valid_substitutions(&antecedents, 0, &HashMap::new());
-                if valid_substitutions.is_empty() { continue; }
                 for valid_substitution in valid_substitutions {
                     let all_antecedents_satisfied: bool = self.evaluate_antecedents(
                         &rule.antecedents,
@@ -48,15 +47,65 @@ impl InferenceEngine {
                             }
                             return false;
                         },
-                        &|left: &String, right: &String| {
-                            if let Some(left_fact) = valid_substitution.get(left) {
-                                if let Some(right_fact) = valid_substitution.get(right) {
-                                    left_fact == right_fact
-                                } else {
-                                    panic!("{} was not found", right);
+                        &|operator: &AntecedentItem, left: &Fact, right: &Fact| {
+                            let substituted_left: &Fact = &self.apply_substitution(left, &valid_substitution);
+                            let substituted_right: &Fact = &self.apply_substitution(right, &valid_substitution);
+                            match operator {
+                                AntecedentItem::Equals => substituted_left == substituted_right,
+                                AntecedentItem::NotEquals => substituted_left != substituted_right,
+                                AntecedentItem::GreaterThan => {
+                                    let left_number: &i32 = if let Fact::Number(NumericFact { value }) = substituted_left {
+                                        value
+                                    } else {
+                                        panic!("Not a number")
+                                    };
+                                    let right_number: &i32 = if let Fact::Number(NumericFact { value }) = substituted_right {
+                                        value
+                                    } else {
+                                        panic!("Not a number")
+                                    };
+                                    left_number > right_number
                                 }
-                            } else {
-                                panic!("{} was not found", left);
+                                AntecedentItem::GreaterOrEquals => {
+                                    let left_number: &i32 = if let Fact::Number(NumericFact { value }) = substituted_left {
+                                        value
+                                    } else {
+                                        panic!("Not a number")
+                                    };
+                                    let right_number: &i32 = if let Fact::Number(NumericFact { value }) = substituted_right {
+                                        value
+                                    } else {
+                                        panic!("Not a number")
+                                    };
+                                    left_number >= right_number
+                                }
+                                AntecedentItem::LesserThan => {
+                                    let left_number: &i32 = if let Fact::Number(NumericFact { value }) = substituted_left {
+                                        value
+                                    } else {
+                                        panic!("Not a number")
+                                    };
+                                    let right_number: &i32 = if let Fact::Number(NumericFact { value }) = substituted_right {
+                                        value
+                                    } else {
+                                        panic!("Not a number")
+                                    };
+                                    left_number < right_number
+                                }
+                                AntecedentItem::LesserOrEquals => {
+                                    let left_number: &i32 = if let Fact::Number(NumericFact { value }) = substituted_left {
+                                        value
+                                    } else {
+                                        panic!("Not a number")
+                                    };
+                                    let right_number: &i32 = if let Fact::Number(NumericFact { value }) = substituted_right {
+                                        value
+                                    } else {
+                                        panic!("Not a number")
+                                    };
+                                    left_number <= right_number
+                                }
+                                _ => unreachable!()
                             }
                         }
                     );
@@ -100,15 +149,65 @@ impl InferenceEngine {
                             let substituted_antecedent: Fact = engine.apply_substitution(&partially_substituted_antecedent, &antecedent_substitution);
                             process(engine, &substituted_antecedent, proven_facts)
                         },
-                        &|left: &String, right: &String| {
-                            if let Some(left_fact) = consequent_substitution.get(left) {
-                                if let Some(right_fact) = consequent_substitution.get(right) {
-                                    left_fact == right_fact
-                                } else {
-                                    panic!("{} was not found", right);
+                        &|operator: &AntecedentItem, left: &Fact, right: &Fact| {
+                            let substituted_left: &Fact = &engine.apply_substitution(left, &consequent_substitution);
+                            let substituted_right: &Fact = &engine.apply_substitution(right, &consequent_substitution);
+                            match operator {
+                                AntecedentItem::Equals => substituted_left == substituted_right,
+                                AntecedentItem::NotEquals => substituted_left != substituted_right,
+                                AntecedentItem::GreaterThan => {
+                                    let left_number: &i32 = if let Fact::Number(NumericFact { value }) = substituted_left {
+                                        value
+                                    } else {
+                                        panic!("Not a number")
+                                    };
+                                    let right_number: &i32 = if let Fact::Number(NumericFact { value }) = substituted_right {
+                                        value
+                                    } else {
+                                        panic!("Not a number")
+                                    };
+                                    left_number > right_number
                                 }
-                            } else {
-                                panic!("{} was not found", left);
+                                AntecedentItem::GreaterOrEquals => {
+                                    let left_number: &i32 = if let Fact::Number(NumericFact { value }) = substituted_left {
+                                        value
+                                    } else {
+                                        panic!("Not a number")
+                                    };
+                                    let right_number: &i32 = if let Fact::Number(NumericFact { value }) = substituted_right {
+                                        value
+                                    } else {
+                                        panic!("Not a number")
+                                    };
+                                    left_number >= right_number
+                                }
+                                AntecedentItem::LesserThan => {
+                                    let left_number: &i32 = if let Fact::Number(NumericFact { value }) = substituted_left {
+                                        value
+                                    } else {
+                                        panic!("Not a number")
+                                    };
+                                    let right_number: &i32 = if let Fact::Number(NumericFact { value }) = substituted_right {
+                                        value
+                                    } else {
+                                        panic!("Not a number")
+                                    };
+                                    left_number < right_number
+                                }
+                                AntecedentItem::LesserOrEquals => {
+                                    let left_number: &i32 = if let Fact::Number(NumericFact { value }) = substituted_left {
+                                        value
+                                    } else {
+                                        panic!("Not a number")
+                                    };
+                                    let right_number: &i32 = if let Fact::Number(NumericFact { value }) = substituted_right {
+                                        value
+                                    } else {
+                                        panic!("Not a number")
+                                    };
+                                    left_number <= right_number
+                                }
+                                _ => unreachable!()
                             }
                         }
                     );
@@ -144,14 +243,14 @@ impl InferenceEngine {
             output.join(",\n")
         }
     }
-    fn evaluate_antecedents(&self, antecedents: &Vec<AntecedentItem>, fact_evaluator: &mut impl FnMut(&Fact) -> bool, equivalence_evaluator: &impl Fn(&String, &String) -> bool) -> bool {
+    fn evaluate_antecedents(&self, antecedents: &Vec<AntecedentItem>, fact_evaluator: &mut impl FnMut(&Fact) -> bool, operation_evaluator: &impl Fn(&AntecedentItem, &Fact, &Fact) -> bool) -> bool {
         #[derive(PartialEq, Eq)]
         enum StackItem<'s> { Fact(&'s Fact), Value(bool) }
         let mut stack: Vec<StackItem> = Vec::new();
         for item in antecedents {
             match item {
                 AntecedentItem::Fact(fact) => stack.push(StackItem::Fact(fact)),
-                AntecedentItem::AND => {
+                AntecedentItem::And => {
                     let right: StackItem = stack.pop().unwrap();
                     match stack.pop().unwrap() {
                         StackItem::Fact(fact) => {
@@ -172,7 +271,7 @@ impl InferenceEngine {
                         StackItem::Value(value) => stack.push(StackItem::Value(value))
                     }
                 }
-                AntecedentItem::OR => {
+                AntecedentItem::Or => {
                     let right: StackItem = stack.pop().unwrap();
                     match stack.pop().unwrap() {
                         StackItem::Fact(fact) => {
@@ -193,43 +292,16 @@ impl InferenceEngine {
                         StackItem::Value(value) => stack.push(StackItem::Value(value))
                     }
                 }
-                AntecedentItem::EQUALS => {
-                    let right: &String = match stack.pop().unwrap() {
-                        StackItem::Fact(fact) => if let Fact::Variable(Variable { name }) = fact {
-                            name
-                        } else {
-                            panic!("cannot compair facts")
-                        }
-                        _ => panic!("cannot compair facts")
+                AntecedentItem::Equals | AntecedentItem::NotEquals | AntecedentItem::GreaterThan | AntecedentItem::GreaterOrEquals | AntecedentItem::LesserThan | AntecedentItem::LesserOrEquals => {
+                    let right: &Fact = match stack.pop().unwrap() {
+                        StackItem::Fact(fact) => fact,
+                        _ => panic!("cannot compair")
                     };
-                    let left: &String = match stack.pop().unwrap() {
-                        StackItem::Fact(fact) => if let Fact::Variable(Variable { name }) = fact {
-                            name
-                        } else {
-                            panic!("cannot compair facts")
-                        }
-                        _ => panic!("cannot compair facts")
+                    let left: &Fact = match stack.pop().unwrap() {
+                        StackItem::Fact(fact) => fact,
+                        _ => panic!("cannot compair")
                     };
-                    stack.push(StackItem::Value(equivalence_evaluator(&left, &right)));
-                }
-                AntecedentItem::NOTEQUALS => {
-                    let right: &String = match stack.pop().unwrap() {
-                        StackItem::Fact(fact) => if let Fact::Variable(Variable { name }) = fact {
-                            name
-                        } else {
-                            panic!("cannot compair facts")
-                        }
-                        _ => panic!("cannot compair facts")
-                    };
-                    let left: &String = match stack.pop().unwrap() {
-                        StackItem::Fact(fact) => if let Fact::Variable(Variable { name }) = fact {
-                            name
-                        } else {
-                            panic!("cannot compair facts")
-                        }
-                        _ => panic!("cannot compair facts")
-                    };
-                    stack.push(StackItem::Value(!equivalence_evaluator(&left, &right)));
+                    stack.push(StackItem::Value(operation_evaluator(item, left, right)));
                 }
             }
         }
@@ -240,7 +312,7 @@ impl InferenceEngine {
     }
     fn find_valid_substitutions(&self, antecedents: &Vec<Fact>, index: usize, current_substitution: &HashMap<String, Fact>) -> Vec<HashMap<String, Fact>> {
         if index >= antecedents.len() { return vec![current_substitution.clone()]; }
-        let antecedent: &Fact = &antecedents[index];
+        let antecedent: &Fact = &self.apply_substitution(&antecedents[index], current_substitution);
         if antecedent.is_negative() {
             if self.knowledge_base.has_fact(&self.apply_substitution(antecedent, current_substitution)) {
                 return self.find_valid_substitutions(antecedents, index + 1, current_substitution);
@@ -294,15 +366,18 @@ impl InferenceEngine {
     }
     fn unify(&self, fact1: &Fact, fact2: &Fact) -> Option<HashMap<String, Fact>> {
         match (fact1, fact2) {
+            (Fact::Number(numeric_fact1), Fact::Number(numeric_fact2)) => {
+                if numeric_fact1 == numeric_fact2 { Some(HashMap::new()) } else { None }
+            }
             (Fact::Atomic(atomic_fact1), Fact::Atomic(atomic_fact2)) => {
                 if atomic_fact1 == atomic_fact2 { Some(HashMap::new()) } else { None }
             }
             (Fact::Variable(variable1), fact) => {
                 Some(HashMap::from([(variable1.name.clone(), fact.clone())]))
-            },
+            }
             (fact, Fact::Variable(variable1)) => {
                 Some(HashMap::from([(variable1.name.clone(), fact.clone())]))
-            },
+            }
             (Fact::Predicate(predicate1), Fact::Predicate(predicate2)) => {
                 if predicate1.name != predicate2.name || predicate1.arguments.len() != predicate2.arguments.len() || predicate1.positive != predicate2.positive {
                     return None;

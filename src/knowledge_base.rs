@@ -87,6 +87,7 @@ impl fmt::Display for KnowledgeBase {
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Fact {
+    Number(NumericFact),
     Atomic(AtomicFact),
     Predicate(PredicateFact),
     Variable(Variable),
@@ -94,6 +95,7 @@ pub enum Fact {
 impl Fact {
     pub fn is_negative(&self) -> bool {
         match self {
+            Fact::Number(_) => false,
             Fact::Atomic(atomic) => !atomic.positive,
             Fact::Predicate(predicate) => !predicate.positive,
             Fact::Variable(_) => false
@@ -102,6 +104,7 @@ impl Fact {
     #[allow(dead_code)]
     pub fn negate(&mut self) {
         match self {
+            Fact::Number(_) => {}
             Fact::Atomic(atomic) => atomic.negate(),
             Fact::Predicate(predicate) => predicate.negate(),
             Fact::Variable(_) => {}
@@ -109,6 +112,7 @@ impl Fact {
     }
     pub fn get_negated(&self) -> Fact {
         match self {
+            Fact::Number(_) => self.clone(),
             Fact::Atomic(atomic) => Fact::Atomic(atomic.get_negated()),
             Fact::Predicate(predicate) => Fact::Predicate(predicate.get_negated()),
             Fact::Variable(_) => self.clone()
@@ -119,7 +123,9 @@ impl Fact {
             Fact::Variable(Variable::from_string(string))
         } else if string.contains('(') && string.contains(')') {
             Fact::Predicate(PredicateFact::from_string(string))
-        } else {
+        } else if string.parse::<i32>().is_ok() {
+            Fact::Number(NumericFact::from_string(string))
+        } else { // floats are atoms
             Fact::Atomic(AtomicFact::from_string(string))
         }
     }
@@ -127,10 +133,29 @@ impl Fact {
 impl fmt::Display for Fact {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Fact::Number(n) => write!(f, "{}", n),
             Fact::Atomic(a) => write!(f, "{}", a),
             Fact::Predicate(p) => write!(f, "{}", p),
             Fact::Variable(v) => write!(f, "{}", v),
         }
+    }
+}
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub struct NumericFact {
+    pub value: i32
+}
+impl NumericFact {
+    pub fn new(value: i32) -> Self {
+        NumericFact { value }
+    }
+    pub fn from_string(string: &str) -> Self {
+        NumericFact::new(string.parse().unwrap())
+    }
+}
+impl fmt::Display for NumericFact {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.value)
     }
 }
 
@@ -246,7 +271,7 @@ impl Rule {
         for item in &self.antecedents {
             match item {
                 AntecedentItem::Fact(_) => stack_height += 1,
-                AntecedentItem::AND | AntecedentItem::OR | AntecedentItem::EQUALS | AntecedentItem::NOTEQUALS => {
+                AntecedentItem::And | AntecedentItem::Or | AntecedentItem::Equals | AntecedentItem::NotEquals | AntecedentItem::GreaterThan | AntecedentItem::GreaterOrEquals | AntecedentItem::LesserThan | AntecedentItem::LesserOrEquals => {
                     if stack_height < 2 {
                         panic!("Invalid postfix expression: not enough operands");
                     }
@@ -304,9 +329,9 @@ impl Rule {
             let mut operator_stack: Vec<String> = Vec::new();
             for token in tokens {
                 match token.as_str() {
-                    "AND" => {
+                    "&" => {
                         while let Some(op) = operator_stack.last() {
-                            if op == "AND" || op == "OR" || op == "==" || op == "!=" {
+                            if matches!(op.as_str(), "&" | ">" | ">=" | "<" | "<=" | "==" | "!=") {
                                 let popped_op: String = operator_stack.pop().unwrap();
                                 output.push(token_to_antecedent_item(&popped_op));
                             } else {
@@ -315,9 +340,9 @@ impl Rule {
                         }
                         operator_stack.push(token.clone());
                     }
-                    "OR" => {
+                    "|" => {
                         while let Some(op) = operator_stack.last() {
-                            if op == "AND" || op == "OR" || op == "==" || op == "!=" {
+                            if matches!(op.as_str(), "|" | "&" | ">" | ">=" | "<" | "<=" | "==" | "!=") {
                                 let popped_op: String = operator_stack.pop().unwrap();
                                 output.push(token_to_antecedent_item(&popped_op));
                             } else {
@@ -328,7 +353,7 @@ impl Rule {
                     }
                     "==" => {
                         while let Some(op) = operator_stack.last() {
-                            if op == "AND" || op == "OR" || op == "==" || op == "!=" {
+                            if matches!(op.as_str(), ">" | ">=" | "<" | "<=" | "==" | "!=") {
                                 let popped_op: String = operator_stack.pop().unwrap();
                                 output.push(token_to_antecedent_item(&popped_op));
                             } else {
@@ -339,7 +364,51 @@ impl Rule {
                     }
                     "!=" => {
                         while let Some(op) = operator_stack.last() {
-                            if op == "AND" || op == "OR" || op == "==" || op == "!=" {
+                            if matches!(op.as_str(), ">" | ">=" | "<" | "<=" | "==" | "!=") {
+                                let popped_op: String = operator_stack.pop().unwrap();
+                                output.push(token_to_antecedent_item(&popped_op));
+                            } else {
+                                break;
+                            }
+                        }
+                        operator_stack.push(token.clone());
+                    }
+                    ">" => {
+                        while let Some(op) = operator_stack.last() {
+                            if matches!(op.as_str(), ">" | ">=" | "<" | "<=" | "==" | "!=") {
+                                let popped_op: String = operator_stack.pop().unwrap();
+                                output.push(token_to_antecedent_item(&popped_op));
+                            } else {
+                                break;
+                            }
+                        }
+                        operator_stack.push(token.clone());
+                    }
+                    ">=" => {
+                        while let Some(op) = operator_stack.last() {
+                            if matches!(op.as_str(), ">" | ">=" | "<" | "<=" | "==" | "!=") {
+                                let popped_op: String = operator_stack.pop().unwrap();
+                                output.push(token_to_antecedent_item(&popped_op));
+                            } else {
+                                break;
+                            }
+                        }
+                        operator_stack.push(token.clone());
+                    }
+                    "<" => {
+                        while let Some(op) = operator_stack.last() {
+                            if matches!(op.as_str(), ">" | ">=" | "<" | "<=" | "==" | "!=") {
+                                let popped_op: String = operator_stack.pop().unwrap();
+                                output.push(token_to_antecedent_item(&popped_op));
+                            } else {
+                                break;
+                            }
+                        }
+                        operator_stack.push(token.clone());
+                    }
+                    "<=" => {
+                        while let Some(op) = operator_stack.last() {
+                            if matches!(op.as_str(), ">" | ">=" | "<" | "<=" | "==" | "!=") {
                                 let popped_op: String = operator_stack.pop().unwrap();
                                 output.push(token_to_antecedent_item(&popped_op));
                             } else {
@@ -365,10 +434,14 @@ impl Rule {
         }
         fn token_to_antecedent_item(token: &str) -> AntecedentItem {
             match token {
-                "AND" | "and" => AntecedentItem::AND,
-                "OR" | "or" => AntecedentItem::OR,
-                "==" => AntecedentItem::EQUALS,
-                "!=" => AntecedentItem::NOTEQUALS,
+                "&" => AntecedentItem::And,
+                "|" => AntecedentItem::Or,
+                "==" => AntecedentItem::Equals,
+                "!=" => AntecedentItem::NotEquals,
+                ">" => AntecedentItem::GreaterThan,
+                ">=" => AntecedentItem::GreaterOrEquals,
+                "<" => AntecedentItem::LesserThan,
+                "<=" => AntecedentItem::LesserOrEquals,
                 _ => AntecedentItem::Fact(Fact::from_string(token)),
             }
         }
@@ -380,43 +453,15 @@ impl Rule {
         for item in &self.antecedents {
             match item {
                 AntecedentItem::Fact(fact) => stack.push(fact.to_string()),
-                AntecedentItem::AND => {
+                _ => {
                     if stack.len() >= 2 {
                         let right: String = stack.pop().unwrap();
                         let left: String = stack.pop().unwrap();
-                        stack.push(format!("({} AND {})", left, right));
+                        stack.push(format!("({} {} {})", left, item, right));
                     } else {
-                        stack.push("AND".to_string());
+                        stack.push(item.to_string());
                     }
                 }
-                AntecedentItem::OR => {
-                    if stack.len() >= 2 {
-                        let right: String = stack.pop().unwrap();
-                        let left: String = stack.pop().unwrap();
-                        stack.push(format!("({} OR {})", left, right));
-                    } else {
-                        stack.push("OR".to_string());
-                    }
-                }
-                AntecedentItem::EQUALS => {
-                    if stack.len() >= 2 {
-                        let right: String = stack.pop().unwrap();
-                        let left: String = stack.pop().unwrap();
-                        stack.push(format!("({} EQUALS {})", left, right));
-                    } else {
-                        stack.push("EQUALS".to_string());
-                    }
-                }
-                AntecedentItem::NOTEQUALS => {
-                    if stack.len() >= 2 {
-                        let right: String = stack.pop().unwrap();
-                        let left: String = stack.pop().unwrap();
-                        stack.push(format!("({} NOTEQUALS {})", left, right));
-                    } else {
-                        stack.push("NOTEQUALS".to_string());
-                    }
-                }
-
             }
         }
         if stack.len() == 1 {
@@ -440,16 +485,23 @@ impl fmt::Display for Rule {
 #[derive(Clone, PartialEq, Eq)]
 pub enum AntecedentItem {
     Fact(Fact),
-    AND, OR, EQUALS, NOTEQUALS
+    And, Or,
+    Equals, NotEquals,
+    GreaterThan, GreaterOrEquals,
+    LesserThan, LesserOrEquals
 }
 impl fmt::Display for AntecedentItem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AntecedentItem::Fact(fact) => write!(f, "{}", fact),
-            AntecedentItem::AND => write!(f, "AND"),
-            AntecedentItem::OR => write!(f, "OR"),
-            AntecedentItem::EQUALS => write!(f, "EQUALS"),
-            AntecedentItem::NOTEQUALS => write!(f, "NOTEQUALS")
+            AntecedentItem::And => write!(f, "&"),
+            AntecedentItem::Or => write!(f, "|"),
+            AntecedentItem::Equals => write!(f, "=="),
+            AntecedentItem::NotEquals => write!(f, "!="),
+            AntecedentItem::GreaterThan => write!(f, ">"),
+            AntecedentItem::GreaterOrEquals => write!(f, ">="),
+            AntecedentItem::LesserThan => write!(f, "<"),
+            AntecedentItem::LesserOrEquals => write!(f, "<="),
         }
     }
 }

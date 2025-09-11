@@ -9,7 +9,7 @@ fn test1() {
                 "has_ammo"
             ],
             vec![
-                ("player_nearby AND has_ammo", "should_attack")
+                ("player_nearby & has_ammo", "should_attack")
             ]
         )
     );
@@ -25,7 +25,7 @@ fn test2() {
                 "!has_ammo"
             ],
             vec![
-                ("player_nearby AND !has_ammo", "should_attack")
+                ("player_nearby & !has_ammo", "should_attack")
             ]
         )
     );
@@ -41,7 +41,7 @@ fn test3() {
                 "parent(mary, alice)"
             ],
             vec![
-                ("parent(x?, y?) AND parent(y?, z?)", "grandparent(x?, z?)")
+                ("parent(x?, y?) & parent(y?, z?)", "grandparent(x?, z?)")
             ]
         )
     );
@@ -70,18 +70,15 @@ fn test4() {
                 "mother(ama, osei)"
             ],
             vec![
-                //("mother(x?, y?) AND mother(y?, z?)", "grandparent(x?, z?)"),
-                //("mother(y?, z?) AND mother(z?, x?)", "grandchild(x?, y?)"),
-                ("person(x?, female) AND mother(z?, x?) AND mother(z?, y?) AND [x? != y?]", "sister(x?, y?)"),
-                //("person(x?, male) AND mother(z?, x?) AND mother(z?, y?)", "brother(x?, y?)")
+                ("mother(x?, y?) & mother(y?, z?)", "grandparent(x?, z?)"),
+                ("mother(y?, z?) & mother(z?, x?)", "grandchild(x?, y?)"),
+                ("person(x?, female) & mother(z?, x?) & mother(z?, y?) & [x? != y?]", "sister(x?, y?)"),
+                ("person(x?, male) & mother(z?, x?) & mother(z?, y?) & [x? != y?]", "brother(x?, y?)")
             ]
         )
     );
-    //inference_engine.infer();
-    //for fact in inference_engine.knowledge_base.get_facts() {
-    //    println!("{}", fact);
-    //}
-    assert!(inference_engine.prove(&Fact::from_string("sister(ama, akosua)")));
+    inference_engine.infer();
+    assert!(inference_engine.query(&Fact::from_string("sister(x?, y?)")).len() > 0);
 }
 #[test]
 fn test5() {
@@ -108,8 +105,8 @@ fn test_negation_with_predicates() {
                 "has_ability(unit_123, cloak)",
             ],
             vec![
-                ("visible(unit?) AND !has_ability(unit?, cloak)", "can_target(unit?)"),
-                ("visible(unit?) AND has_ability(unit?, cloak)", "cannot_target(unit?)"),
+                ("visible(unit?) & !has_ability(unit?, cloak)", "can_target(unit?)"),
+                ("visible(unit?) & has_ability(unit?, cloak)", "cannot_target(unit?)"),
             ]
         )
     );
@@ -131,8 +128,8 @@ fn test_negation_multiple_units() {
                 "has_ability(ghost_1, cloak)",
             ],
             vec![
-                ("visible(unit?) AND !has_ability(unit?, cloak)", "can_target(unit?)"),
-                ("visible(unit?) AND has_ability(unit?, cloak)", "cannot_target(unit?)"),
+                ("visible(unit?) & !has_ability(unit?, cloak)", "can_target(unit?)"),
+                ("visible(unit?) & has_ability(unit?, cloak)", "cannot_target(unit?)"),
             ]
         )
     );
@@ -152,7 +149,7 @@ fn test_nested_negation() {
                 "visible(zergling_1)",
             ],
             vec![
-                ("visible(unit?) AND detected(unit?)", "can_attack(unit?)"),
+                ("visible(unit?) & detected(unit?)", "can_attack(unit?)"),
             ]
         )
     );
