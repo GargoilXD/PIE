@@ -10,17 +10,17 @@ fn main() {
     let mut inference_engine: InferenceEngine = InferenceEngine::new(
         KnowledgeBase::from_strings(
             vec![
-                "player_nearby",
+                "!player_nearby",
                 "has_ammo"
             ],
             vec![
-                ("player_nearby AND has_ammo", "should_attack")
+                ("player_nearby OR has_ammo", "should_attack")
             ]
         )
     );
-    inference_engine.set_debug(true);
+    inference_engine.set_debug(false);
     let fact: knowledge_base::Fact = knowledge_base::Fact::from_string("should_attack");
-    if true { inference_engine.infer(); } else { inference_engine.prove(&fact); }
+    if false { /*inference_engine.infer();*/ } else { inference_engine.prove(&fact); }
     println!("query: {}\n{}", fact, inference_engine.query(&fact));
 }
 

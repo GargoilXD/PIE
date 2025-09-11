@@ -20,11 +20,10 @@ impl InferenceEngine {
     pub fn new(knowledge_base: KnowledgeBase) -> Self {
         InferenceEngine { knowledge_base, debug: false }
     }
-    #[allow(dead_code)]
     pub fn set_debug(&mut self, debug: bool) {
         self.debug = debug;
     }
-    pub fn infer(&mut self) {
+    /*pub fn infer(&mut self) {
         let mut changed: bool = true;
         while changed {
             changed = false;
@@ -42,7 +41,7 @@ impl InferenceEngine {
             }
             for fact in newly_inferred { self.knowledge_base.add_fact(fact); }
         }
-    }
+    }*/
     pub fn prove(&mut self, fact: &Fact) -> bool {
         fn process(engine: &InferenceEngine, fact: &Fact, proven_facts: &mut Vec<Fact>) -> bool {
             if engine.knowledge_base.has_fact(fact) { return true; }
@@ -54,24 +53,23 @@ impl InferenceEngine {
             for rule in engine.knowledge_base.get_rules() {
                 if engine.debug { println!("unify consequent: {} + {}", rule.consequent, fact); }
                 if let Some(consequent_substitution) = engine.unify(&rule.consequent, fact) {
-                    let mut all_antecedents_proven: bool = true;
-                    for antecedent in &rule.antecedents {
-                        let partially_substituted_antecedent: Fact = engine.apply_substitution(antecedent, &consequent_substitution);
-                        let mut antecedent_substitution: HashMap<String, Fact> = HashMap::new();
-                        for existing_fact in engine.knowledge_base.get_facts() {
-                            if engine.debug { println!("unify antecedent: {} + {}", partially_substituted_antecedent, existing_fact); }
-                            if let Some(unified_substitution) = engine.unify(&partially_substituted_antecedent, &existing_fact) {
-                                if let Some(combined_substitution) = engine.combine_substitutions(&antecedent_substitution, unified_substitution) {
-                                    antecedent_substitution = combined_substitution;
+                    let all_antecedents_proven: bool = engine.evaluate_antecedents(
+                        &rule.antecedents,
+                        &mut |antecedent: &Fact| {
+                            let partially_substituted_antecedent: Fact = engine.apply_substitution(antecedent, &consequent_substitution);
+                            let mut antecedent_substitution: HashMap<String, Fact> = HashMap::new();
+                            for existing_fact in engine.knowledge_base.get_facts() {
+                                if engine.debug { println!("unify antecedent: {} + {}", partially_substituted_antecedent, existing_fact); }
+                                if let Some(unified_substitution) = engine.unify(&partially_substituted_antecedent, &existing_fact) {
+                                    if let Some(combined_substitution) = engine.combine_substitutions(&antecedent_substitution, unified_substitution) {
+                                        antecedent_substitution = combined_substitution;
+                                    }
                                 }
                             }
+                            let substituted_antecedent: Fact = engine.apply_substitution(&partially_substituted_antecedent, &antecedent_substitution);
+                            process(engine, &substituted_antecedent, proven_facts)
                         }
-                        let substituted_antecedent: Fact = engine.apply_substitution(&partially_substituted_antecedent, &antecedent_substitution);
-                        if !process(engine, &substituted_antecedent, proven_facts) {
-                            all_antecedents_proven = false;
-                            break;
-                        }
-                    }
+                    );
                     if all_antecedents_proven {
                         proven_facts.push(fact.clone());
                         return true;
@@ -104,11 +102,8 @@ impl InferenceEngine {
             output.join(",\n")
         }
     }
-    fn evaluate_antecedents(&self, antecedents: &Vec<AntecedentItem>, fact_evaluator: &impl Fn(&Fact) -> bool) {
-        enum StackItem<'s> {
-            Fact(&'s Fact),
-            Value(bool)
-        }
+    fn evaluate_antecedents(&self, antecedents: &Vec<AntecedentItem>, fact_evaluator: &mut impl FnMut(&Fact) -> bool) -> bool {
+        enum StackItem<'s> { Fact(&'s Fact), Value(bool) }
         let mut stack: Vec<StackItem> = Vec::new();
         for item in antecedents {
             match item {
@@ -117,9 +112,17 @@ impl InferenceEngine {
                     let right: StackItem = stack.pop().unwrap();
                     match stack.pop().unwrap() {
                         StackItem::Fact(fact) => {
-                            if !fact_evaluator(&fact) { stack.push(StackItem::Value(false)); }
+                            if !fact_evaluator(&fact) {
+                                stack.push(StackItem::Value(false));
+                                continue;
+                            }
                         }
-                        StackItem::Value(value) => if !value { stack.push(StackItem::Value(false)) }
+                        StackItem::Value(value) => {
+                            if !value {
+                                stack.push(StackItem::Value(false));
+                                continue;
+                            }
+                        }
                     }
                     match right {
                         StackItem::Fact(fact) => stack.push(StackItem::Value(fact_evaluator(&fact))),
@@ -130,9 +133,17 @@ impl InferenceEngine {
                     let right: StackItem = stack.pop().unwrap();
                     match stack.pop().unwrap() {
                         StackItem::Fact(fact) => {
-                            if fact_evaluator(&fact) { stack.push(StackItem::Value(true)); }
+                            if fact_evaluator(&fact) {
+                                stack.push(StackItem::Value(true));
+                                continue;
+                            }
                         }
-                        StackItem::Value(value) => if value { stack.push(StackItem::Value(true)) }
+                        StackItem::Value(value) => {
+                            if value {
+                                stack.push(StackItem::Value(true));
+                                continue;
+                            }
+                        }
                     }
                     match right {
                         StackItem::Fact(fact) => stack.push(StackItem::Value(fact_evaluator(&fact))),
@@ -141,12 +152,9 @@ impl InferenceEngine {
                 }
             }
         }
-        if let StackItem::Value(value) = stack.pop().unwrap() {
-            value;
-        } else {
-            unreachable!()
-        }
+        if let StackItem::Value(value) = stack.pop().unwrap() { value } else { unreachable!() }
     }
+    #[allow(dead_code)]
     fn find_valid_substitutions(&self, antecedents: &Vec<Fact>, index: usize, current_substitution: &HashMap<String, Fact>) -> Vec<HashMap<String, Fact>> {
         if index >= antecedents.len() { return vec![current_substitution.clone()]; }
         let antecedent: &Fact = &antecedents[index];
@@ -204,8 +212,12 @@ impl InferenceEngine {
     }
     fn unify(&self, fact1: &Fact, fact2: &Fact) -> Option<HashMap<String, Fact>> {
         match (fact1, fact2) {
-            (Fact::Atomic(_), Fact::Atomic(_)) => {
-                Some(HashMap::new())
+            (Fact::Atomic(atomic_fact1), Fact::Atomic(atomic_fact2)) => {
+                if atomic_fact1 == atomic_fact2 {
+                    Some(HashMap::new())
+                } else {
+                    None
+                }
             }
             (Fact::Variable(variable1), fact) => {
                 //if matches!(fact, Fact::Variable(variable2) if variable1.name != variable2.name) { return None }
