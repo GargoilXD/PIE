@@ -104,6 +104,49 @@ impl InferenceEngine {
             output.join(",\n")
         }
     }
+    fn evaluate_antecedents(&self, antecedents: &Vec<AntecedentItem>, fact_evaluator: &impl Fn(&Fact) -> bool) {
+        enum StackItem<'s> {
+            Fact(&'s Fact),
+            Value(bool)
+        }
+        let mut stack: Vec<StackItem> = Vec::new();
+        for item in antecedents {
+            match item {
+                AntecedentItem::Fact(fact) => stack.push(StackItem::Fact(fact)),
+                AntecedentItem::AND => {
+                    let right: StackItem = stack.pop().unwrap();
+                    match stack.pop().unwrap() {
+                        StackItem::Fact(fact) => {
+                            if !fact_evaluator(&fact) { stack.push(StackItem::Value(false)); }
+                        }
+                        StackItem::Value(value) => if !value { stack.push(StackItem::Value(false)) }
+                    }
+                    match right {
+                        StackItem::Fact(fact) => stack.push(StackItem::Value(fact_evaluator(&fact))),
+                        StackItem::Value(value) => if !value { stack.push(StackItem::Value(false)) }
+                    }
+                }
+                AntecedentItem::OR => {
+                    let right: StackItem = stack.pop().unwrap();
+                    match stack.pop().unwrap() {
+                        StackItem::Fact(fact) => {
+                            if fact_evaluator(&fact) { stack.push(StackItem::Value(true)); }
+                        }
+                        StackItem::Value(value) => if value { stack.push(StackItem::Value(true)) }
+                    }
+                    match right {
+                        StackItem::Fact(fact) => stack.push(StackItem::Value(fact_evaluator(&fact))),
+                        StackItem::Value(value) => if !value { stack.push(StackItem::Value(false)) }
+                    }
+                }
+            }
+        }
+        if let StackItem::Value(value) = stack.pop().unwrap() {
+            value;
+        } else {
+            unreachable!()
+        }
+    }
     fn find_valid_substitutions(&self, antecedents: &Vec<Fact>, index: usize, current_substitution: &HashMap<String, Fact>) -> Vec<HashMap<String, Fact>> {
         if index >= antecedents.len() { return vec![current_substitution.clone()]; }
         let antecedent: &Fact = &antecedents[index];
@@ -153,7 +196,7 @@ impl InferenceEngine {
                 }
             },
             Fact::Predicate(predicate) => {
-                let new_terms: Vec<Fact> = predicate.terms.iter().map(|term| self.apply_substitution(term, substitution)).collect();
+                let new_terms: Vec<Fact> = predicate.arguments.iter().map(|term| self.apply_substitution(term, substitution)).collect();
                 Fact::Predicate(PredicateFact::new(predicate.name.clone(), new_terms, predicate.positive))
             }
             _ => fact.clone(),
@@ -173,11 +216,11 @@ impl InferenceEngine {
                 Some(HashMap::from([(variable1.name.clone(), fact.clone())]))
             },
             (Fact::Predicate(predicate1), Fact::Predicate(predicate2)) => {
-                if predicate1.name != predicate2.name || predicate1.terms.len() != predicate2.terms.len() || predicate1.positive != predicate2.positive {
+                if predicate1.name != predicate2.name || predicate1.arguments.len() != predicate2.arguments.len() || predicate1.positive != predicate2.positive {
                     return None;
                 }
                 let mut substitutions: HashMap<String, Fact> = HashMap::new();
-                for (term1, term2) in predicate1.terms.iter().zip(predicate2.terms.iter()) {
+                for (term1, term2) in predicate1.arguments.iter().zip(predicate2.arguments.iter()) {
                     if let Some(argument_substitution) = self.unify(term1, term2) {
                         let combined_substitution: Option<HashMap<String, Fact>> = self.combine_substitutions(&substitutions, argument_substitution);
                         if let Some(combined) = combined_substitution {

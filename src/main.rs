@@ -10,14 +10,16 @@ fn main() {
     let mut inference_engine: InferenceEngine = InferenceEngine::new(
         KnowledgeBase::from_strings(
             vec![
-                "intelligence_report(scout_1, sighted(enemy_tanks, moving_toward(northern_base))",
+                "player_nearby",
+                "has_ammo"
             ],
             vec![
-                (&vec!["intelligence_report(source?, sighted(unit_type?, moving_toward(location?))"], "alert_defenses(location?)"),
+                ("player_nearby AND has_ammo", "should_attack")
             ]
         )
     );
-    let fact: knowledge_base::Fact = knowledge_base::Fact::from_string("alert_defenses(northern_base)");
+    inference_engine.set_debug(true);
+    let fact: knowledge_base::Fact = knowledge_base::Fact::from_string("should_attack");
     if true { inference_engine.infer(); } else { inference_engine.prove(&fact); }
     println!("query: {}\n{}", fact, inference_engine.query(&fact));
 }

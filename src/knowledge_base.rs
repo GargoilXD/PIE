@@ -24,6 +24,10 @@ impl KnowledgeBase {
     pub fn add_fact(&mut self, fact: Fact) {
         self.working_memory.insert(fact);
     }
+    #[allow(dead_code)]
+    pub fn remove_fact(&mut self, fact: &Fact) {
+        self.working_memory.remove(fact);
+    }
     /*pub fn add_derived_rule(&mut self, rule: Rule) {
         if !self.derived_rules.iter().any(|r| r.equals(&rule)) {
             self.derived_rules.push(rule);
@@ -52,13 +56,13 @@ impl KnowledgeBase {
         self.axiomatic_rules.clear();
         self.working_memory.clear();
     }
-    pub fn from_strings(facts: Vec<&str>, rules: Vec<(&Vec<&str>, &str)>) -> Self {
+    pub fn from_strings(facts: Vec<&str>, rules: Vec<(&str, &str)>) -> Self {
         let mut knowledge_base: KnowledgeBase = KnowledgeBase::new();
         for fact_str in facts {
             knowledge_base.add_axiomatic_fact(Fact::from_string(fact_str));
         }
         for (antecedents, consequent) in rules {
-            knowledge_base.add_axiomatic_rule(Rule::from_string(antecedents.clone(), consequent));
+            knowledge_base.add_axiomatic_rule(Rule::from_string(antecedents, consequent));
         }
         knowledge_base
     }
@@ -163,18 +167,18 @@ impl fmt::Display for AtomicFact {
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct PredicateFact {
     pub name: String,
-    pub terms: Vec<Fact>,
+    pub arguments: Vec<Fact>,
     pub positive: bool
 }
 impl PredicateFact {
-    pub fn new(name: String, terms: Vec<Fact>, positive: bool) -> Self {
-        PredicateFact { name, terms, positive }
+    pub fn new(name: String, arguments: Vec<Fact>, positive: bool) -> Self {
+        PredicateFact { name, arguments, positive }
     }
     pub fn negate(&mut self) {
         self.positive = !self.positive;
     }
     pub fn get_negated(&self) -> Self {
-        PredicateFact::new(self.name.clone(), self.terms.clone(), !self.positive)
+        PredicateFact::new(self.name.clone(), self.arguments.clone(), !self.positive)
     }
     pub fn from_string(string: &str) -> Self {
         let (positive, rest) = if string.starts_with('!') {
@@ -195,8 +199,8 @@ impl PredicateFact {
 }
 impl fmt::Display for PredicateFact {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let terms_str: Vec<String> = self.terms.iter().map(|t| format!("{}", t)).collect();
-        write!(f, "{}{}({})", if self.positive { "" } else { "!" }, self.name, terms_str.join(", "))
+        let arguments: Vec<String> = self.arguments.iter().map(|t| format!("{}", t)).collect();
+        write!(f, "{}{}({})", if self.positive { "" } else { "!" }, self.name, arguments.join(", "))
     }
 }
 
@@ -225,27 +229,170 @@ impl fmt::Display for Variable {
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Rule {
-    pub antecedents: Vec<Fact>,
+    pub antecedents: Vec<AntecedentItem>, // Postfix Stack-Based Evaluation
     pub consequent: Fact,
 }
 impl Rule {
-    pub fn new(antecedents: Vec<Fact>, consequent: Fact) -> Self {
+    pub fn new(antecedents: Vec<AntecedentItem>, consequent: Fact) -> Self {
         Rule { antecedents, consequent }
     }
-    /*pub fn equals(&self, other: &Rule) -> bool {
-        self.antecedents.len() == other.antecedents.len() &&
-        self.antecedents.iter().zip(other.antecedents.iter()).all(|(a, b)| a.equals(b)) &&
-        self.consequent.equals(&other.consequent)
-    }*/
-    pub fn from_string(antecedent_strings: Vec<&str>, consequence_strings: &str) -> Self {
-        let antecedent = antecedent_strings.into_iter().map(|s| Fact::from_string(s)).collect();
-        let consequent = Fact::from_string(consequence_strings);
-        Rule::new(antecedent, consequent)
+    pub fn from_string(antecedents: &str, consequent: &str) -> Self {
+        let antecedents_items: Vec<AntecedentItem> = Self::parse_antecedents(antecedents);
+        let consequent_fact: Fact = Fact::from_string(consequent);
+        Rule::new(antecedents_items, consequent_fact).validate()
+    }
+    pub fn validate(self) -> Self {
+        let mut stack_height:u32 = 0;
+        for item in &self.antecedents {
+            match item {
+                AntecedentItem::Fact(_) => stack_height += 1,
+                AntecedentItem::AND | AntecedentItem::OR => {
+                    if stack_height < 2 {
+                        panic!("Invalid postfix expression: not enough operands");
+                    }
+                    stack_height -= 1;
+                }
+            }
+        }
+        if stack_height != 1 {
+            panic!("Invalid postfix expression: stack should have exactly one item at end");
+        }
+        self
+    }
+    fn parse_antecedents(input: &str) -> Vec<AntecedentItem> {
+        if input.trim().is_empty() { return Vec::new(); }
+        fn tokenize(input: &str) -> Vec<String> {
+            let mut tokens: Vec<String> = Vec::new();
+            let mut current_token: String = String::new();
+            for ch in input.chars() {
+                match ch {
+                    ' ' | '\t' | '\n' => {
+                        if !current_token.is_empty() {
+                            tokens.push(current_token.clone());
+                            current_token.clear();
+                        }
+                    }
+                    '[' | ']' => {
+                        if !current_token.is_empty() {
+                            tokens.push(current_token.clone());
+                            current_token.clear();
+                        }
+                        tokens.push(ch.to_string());
+                    }
+                    _ => current_token.push(ch)
+                }
+            }
+            if !current_token.is_empty() {
+                tokens.push(current_token);
+            }
+            tokens
+        }
+        fn infix_to_postfix(tokens: &[String]) -> Vec<AntecedentItem> {
+            let mut output: Vec<AntecedentItem> = Vec::new();
+            let mut operator_stack: Vec<String> = Vec::new();
+            for token in tokens {
+                match token.as_str() {
+                    "AND" | "and" => {
+                        while let Some(op) = operator_stack.last() {
+                            if op == "AND" || op == "and" || op == "OR" || op == "or" {
+                                let popped_op: String = operator_stack.pop().unwrap();
+                                output.push(token_to_antecedent_item(&popped_op));
+                            } else {
+                                break;
+                            }
+                        }
+                        operator_stack.push(token.clone());
+                    }
+                    "OR" | "or" => {
+                        while let Some(op) = operator_stack.last() {
+                            if op == "AND" || op == "and" || op == "OR" || op == "or" {
+                                let popped_op: String = operator_stack.pop().unwrap();
+                                output.push(token_to_antecedent_item(&popped_op));
+                            } else {
+                                break;
+                            }
+                        }
+                        operator_stack.push(token.clone());
+                    }
+                    "[" => operator_stack.push(token.clone()),
+                    "]" => {
+                        while let Some(op) = operator_stack.pop() {
+                            if op == "[" { break; }
+                            output.push(token_to_antecedent_item(&op));
+                        }
+                    }
+                    _ => output.push(AntecedentItem::Fact(Fact::from_string(token.as_str())))
+                }
+            }
+            while let Some(op) = operator_stack.pop() {
+                output.push(token_to_antecedent_item(&op));
+            }
+            output
+        }
+        fn token_to_antecedent_item(token: &str) -> AntecedentItem {
+            match token {
+                "AND" | "and" => AntecedentItem::AND,
+                "OR" | "or" => AntecedentItem::OR,
+                _ => AntecedentItem::Fact(Fact::from_string(token)),
+            }
+        }
+        let tokens: Vec<String> = tokenize(input);
+        infix_to_postfix(&tokens)
+    }
+    fn postfix_to_infix(&self) -> String {
+        let mut stack: Vec<String> = Vec::new();
+        for item in &self.antecedents {
+            match item {
+                AntecedentItem::Fact(fact) => stack.push(fact.to_string()),
+                AntecedentItem::AND => {
+                    if stack.len() >= 2 {
+                        let right: String = stack.pop().unwrap();
+                        let left: String = stack.pop().unwrap();
+                        stack.push(format!("({} AND {})", left, right));
+                    } else {
+                        stack.push("AND".to_string());
+                    }
+                }
+                AntecedentItem::OR => {
+                    if stack.len() >= 2 {
+                        let right: String = stack.pop().unwrap();
+                        let left: String = stack.pop().unwrap();
+                        stack.push(format!("({} OR {})", left, right));
+                    } else {
+                        stack.push("OR".to_string());
+                    }
+                }
+            }
+        }
+        if stack.len() == 1 {
+            let result: String = stack.pop().unwrap();
+            if result.starts_with('(') && result.ends_with(')') {
+                result
+            } else {
+                result
+            }
+        } else {
+            self.antecedents.iter().map(|item: &AntecedentItem| item.to_string()).collect::<Vec<_>>().join(" ")
+        }
     }
 }
 impl fmt::Display for Rule {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let antecedent_str: Vec<String> = self.antecedents.iter().map(|a| format!("{}", a)).collect();
-        write!(f, "IF {} THEN {}", antecedent_str.join(" AND "), self.consequent)
+        write!(f, "IF {} → {}", self.postfix_to_infix(), self.consequent)
+    }
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub enum AntecedentItem {
+    Fact(Fact),
+    AND, OR
+}
+impl fmt::Display for AntecedentItem {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AntecedentItem::Fact(fact) => write!(f, "{}", fact),
+            AntecedentItem::AND => write!(f, "AND"),
+            AntecedentItem::OR => write!(f, "OR")
+        }
     }
 }
