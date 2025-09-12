@@ -21,8 +21,13 @@ impl KnowledgeBase {
     pub fn add_axiomatic_rule(&mut self, rule: Rule) {
         self.axiomatic_rules.push(rule);
     }
-    pub fn add_fact(&mut self, fact: Fact) {
-        self.working_memory.insert(fact);
+    pub fn add_fact(&mut self, mut fact: Fact) {
+        if fact.is_negative() {
+            fact.negate();
+            self.working_memory.remove(&fact);
+        } else {
+            self.working_memory.insert(fact);
+        }
     }
     #[allow(dead_code)]
     pub fn remove_fact(&mut self, fact: &Fact) {
@@ -101,7 +106,6 @@ impl Fact {
             Fact::Variable(_) => false
         }
     }
-    #[allow(dead_code)]
     pub fn negate(&mut self) {
         match self {
             Fact::Number(_) => {}
