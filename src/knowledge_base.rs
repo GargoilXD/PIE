@@ -2,7 +2,7 @@ use std::{collections::HashSet, fmt};
 
 pub struct KnowledgeBase {
     axiomatic_facts: HashSet<Fact>,
-    working_memory: HashSet<Fact>,
+    pub working_memory: HashSet<Fact>,
     axiomatic_rules: Vec<Rule>,
     //derived_rules: Vec<Rule>
 }

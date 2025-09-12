@@ -25,14 +25,17 @@ fn main() {
             ]
         )
     );
-    let expected: knowledge_base::Fact = knowledge_base::Fact::from_string("attack(a?, b?)");
     inference_engine.set_debug(false);
-    if true {
+    if false {
         inference_engine.infer();
-        println!("query after inference: {}\n{}", expected, inference_engine.query(&expected));
+        println!("New facts:");
+        for fact in inference_engine.knowledge_base.working_memory {
+            println!("  {}", fact);
+        }
     } else {
-        inference_engine.prove(&expected);
-        println!("query after prove: {}\n{}", expected, inference_engine.query(&expected));
+        let fact: knowledge_base::Fact = knowledge_base::Fact::from_string("avoid(marine_1, tank_1)");
+        inference_engine.prove(&fact);
+        println!("Has query: {}\n{}", fact, inference_engine.query(&fact));
     }
 }
 
