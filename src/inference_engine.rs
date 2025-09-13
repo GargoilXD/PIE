@@ -357,8 +357,8 @@ impl InferenceEngine {
                 }
             },
             Fact::Predicate(predicate) => {
-                let new_terms: Vec<Fact> = predicate.arguments.iter().map(|term| self.apply_substitution(term, substitution)).collect();
-                Fact::Predicate(PredicateFact::new(predicate.name.clone(), new_terms, predicate.positive))
+                let new_arguments: Vec<Fact> = predicate.arguments.iter().map(|term| self.apply_substitution(term, substitution)).collect();
+                Fact::Predicate(PredicateFact::new(predicate.positive, predicate.name.clone(), new_arguments))
             }
             _ => fact.clone(),
         }

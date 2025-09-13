@@ -11,8 +11,7 @@ impl KnowledgeBase {
         KnowledgeBase {
             axiomatic_facts: HashSet::new(),
             working_memory: HashSet::new(),
-            axiomatic_rules: Vec::new(),
-            //derived_rules: Vec::new()
+            axiomatic_rules: Vec::new()
         }
     }
     pub fn add_axiomatic_fact(&mut self, fact: Fact) {
@@ -33,11 +32,6 @@ impl KnowledgeBase {
     pub fn remove_fact(&mut self, fact: &Fact) {
         self.working_memory.remove(fact);
     }
-    /*pub fn add_derived_rule(&mut self, rule: Rule) {
-        if !self.derived_rules.iter().any(|r| r.equals(&rule)) {
-            self.derived_rules.push(rule);
-        }
-    }*/
     pub fn get_facts(&self) -> impl Iterator<Item = &Fact> {
         self.axiomatic_facts.union(&self.working_memory)
     }
@@ -165,18 +159,18 @@ impl fmt::Display for NumericFact {
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct AtomicFact {
-    pub name: String,
-    pub positive: bool
+    pub positive: bool,
+    pub name: String
 }
 impl AtomicFact {
-    pub fn new(name: String, positive: bool) -> Self {
-        AtomicFact { name, positive }
+    pub fn new(positive: bool, name: String) -> Self {
+        AtomicFact { positive, name }
     }
     pub fn negate(&mut self) {
         self.positive = !self.positive;
     }
     pub fn get_negated(&self) -> Self {
-        AtomicFact::new(self.name.clone(), !self.positive)
+        AtomicFact::new(!self.positive, self.name.clone())
     }
     pub fn from_string(string: &str) -> Self {
         let (positive, name) = if string.starts_with('!') {
@@ -184,7 +178,7 @@ impl AtomicFact {
         } else {
             (true, string.to_string())
         };
-        AtomicFact::new(name, positive)
+        AtomicFact::new(positive, name)
     }
 }
 impl fmt::Display for AtomicFact {
@@ -195,19 +189,19 @@ impl fmt::Display for AtomicFact {
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct PredicateFact {
+    pub positive: bool,
     pub name: String,
-    pub arguments: Vec<Fact>,
-    pub positive: bool
+    pub arguments: Vec<Fact>
 }
 impl PredicateFact {
-    pub fn new(name: String, arguments: Vec<Fact>, positive: bool) -> Self {
-        PredicateFact { name, arguments, positive }
+    pub fn new(positive: bool, name: String, arguments: Vec<Fact>) -> Self {
+        PredicateFact { positive, name, arguments }
     }
     pub fn negate(&mut self) {
         self.positive = !self.positive;
     }
     pub fn get_negated(&self) -> Self {
-        PredicateFact::new(self.name.clone(), self.arguments.clone(), !self.positive)
+        PredicateFact::new(!self.positive, self.name.clone(), self.arguments.clone())
     }
     pub fn from_string(string: &str) -> Self {
         let (positive, rest) = if string.starts_with('!') {
@@ -223,7 +217,7 @@ impl PredicateFact {
         } else {
             terms_str.split(',').map(|s| Fact::from_string(s.trim())).collect()
         };
-        PredicateFact::new(name, terms, positive)
+        PredicateFact::new(positive, name, terms)
     }
 }
 impl fmt::Display for PredicateFact {
@@ -259,7 +253,7 @@ impl fmt::Display for Variable {
 #[derive(Clone, PartialEq, Eq)]
 pub struct Rule {
     pub antecedents: Vec<AntecedentItem>, // Postfix Stack-Based Evaluation
-    pub consequent: Fact,
+    pub consequent: Fact
 }
 impl Rule {
     pub fn new(antecedents: Vec<AntecedentItem>, consequent: Fact) -> Self {

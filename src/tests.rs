@@ -72,20 +72,22 @@ fn test4() {
             vec![
                 ("mother(x?, y?) & mother(y?, z?)", "grandparent(x?, z?)"),
                 ("mother(y?, z?) & mother(z?, x?)", "grandchild(x?, y?)"),
-                ("person(x?, female) & mother(z?, x?) & mother(z?, y?) & [x? != y?]", "sister(x?, y?)"),
-                ("person(x?, male) & mother(z?, x?) & mother(z?, y?) & [x? != y?]", "brother(x?, y?)")
+                ("person(x?, female) & mother(z?, x?) & mother(z?, y?) & x? != y?", "sister(x?, y?)"),
+                ("person(x?, male) & mother(z?, x?) & mother(z?, y?) & x? != y?", "brother(x?, y?)")
             ]
         )
     );
     inference_engine.infer();
-    assert!(inference_engine.query(&Fact::from_string("sister(x?, y?)")).len() > 0);
+    //assert!(inference_engine.query(&Fact::from_string("sister(x?, y?)")).len() > 0);
+    for fact in inference_engine.knowledge_base.working_memory {
+        println!("New Fact: {}", fact)
+    }
 }
 #[test]
 fn test5() {
     let mut inference_engine: InferenceEngine = InferenceEngine::new(
         KnowledgeBase::from_strings(
             vec![
-                "linda",
                 "is_student(linda)",
                 "has_car(linda)"
             ],

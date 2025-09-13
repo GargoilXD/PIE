@@ -5,33 +5,85 @@ mod knowledge_base;
 
 use crate::inference_engine::InferenceEngine;
 use crate::knowledge_base::KnowledgeBase;
-// Up Next
-// Temporal Reasoning
-// Rule Learning
-// Reinforcement Learning
+
 fn main() {
     let mut inference_engine: InferenceEngine = InferenceEngine::new(
         KnowledgeBase::from_strings(
             vec![
-                //"food?",
-                "amount(food, 0)",
-                "is_hungry",
-                "amount(animals, 0)",
-                "amount(fruits, 0)",
-                "!has_weapon",
-                "amount(wood, 0)",
-                "has_axe",
-                "amount(water, 0)",
+                "role(alchemist, villager)",
+                "role(baker, villager)",
+                "role(bard, villager)",
+                "role(bishop, villager)",
+                "role(confessor, villager)",
+                "role(dreamer, villager)",
+                "role(druid, villager)",
+                "role(empress, villager)",
+                "role(enlightened, villager)",
+                "role(fortune_teller, villager)",
+                "role(gem_crafter, villager)",
+                "role(hunter, villager)",
+                "role(jester, villager)",
+                "role(judge, villager)",
+                "role(knight, villager)",
+                "role(knitter, villager)",
+                "role(lover, villager)",
+                "role(medium, villager)",
+                "role(oracle, villager)",
+                "role(poet, villager)",
+                "role(scout, villager)",
+                "role(slayer, villager)",
+                "role(witness, villager)",
+                
+                "role(drunk, outcast)",
+                "role(wretch, outcast)",
+                "role(bombardier, outcast)",
+                "role(deppelganger, outcast)",
+                "role(plague_doctor, outcast)",
+                
+                "role(counsellor, minion)",
+                "role(witch, minion)",
+                "role(minion, minion)",
+                "role(poisioner, minion)",
+                "role(twin_minion, minion)",
+                "role(shaman, minion)",
+                "role(puppeteer, minion)",
+                "role(puppet, minion)",
+                
+                "role(baa, demon)",
+                "role(pooka, demon)",
+                "role(lilis, demon)",
+
+                "good(villager)",
+                "good(outcast)",
+                "evil(minion)",
+                "evil(demon)",
+
+                "is_role(1, medium)",
+                "is_role(2, medium)",
+                "is_role(3, lover)",
+                "is_role(4, jester)",
+                "is_role(5, judge)",
+                "is_role(6, bishop)",
+                "is_role(7, oracle)",
+                "is_role(8, bombardier)",
+
+                "evil_adjacent(0, 2, 4)",
+
+                "says(1, is_role(5, judge))",
+                "says(2, is_role(2, jestor))",
+                "says(3, evil_adjacent(0, 2, 4))",
+                //"says(4, good(2), good(4))",
+                //"says(5, good(2), good(4))",
+                "says(6, role(1, minion), role(4, outcast), role(6, villager))",
+                "says(7, good(2), good(4))",
+                "says(8, good(2), good(4))",
+                "says(3, good(2), good(4))",
+
             ],
             vec![
-                ("amount(food, 1)", "!is_hungry"),
-                ("amount(animals, 1)", "amount(food, 1)"),
-                ("amount(fruits, 1)", "amount(food, 1)"),
-                //("amount(food, 1)", "!is_hungry"),
-                ("has_weapon", "amount(animals, 1)"),
-                ("amount(wood, 1)", "has_weapon"),
-                ("has_axe", "amount(wood, 1)"),
-                ("amount(wood, 1)", "has_axe"),
+                ("says(a?, is_role(b?, c?)) & is_role(b?, c?)", "good(a?)"),
+                ("says(a?, evil_adjacent(b?, c?, d?)) & [b? = 0 & ]", "good(a?)"),
+                ("says(a?, good(b?), good(c?)) & good(b?) & good(c?)", "good(a?)"),
             ]
         )
     );
