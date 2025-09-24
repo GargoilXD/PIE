@@ -9,7 +9,7 @@ mod tests;
 use crate::inference_engine::InferenceEngine;
 use crate::knowledge_base::{Fact, KnowledgeBase};
 
-const DEFAULT_FILE: &str = "./examples/input.txt";
+const DEFAULT_FILE: &str = "./examples/default.txt";
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -157,8 +157,7 @@ fn print_help() {
     println!("  --debug          Enable debug mode");
     println!("  --query          Enter interactive query mode, type 'quit' to exit");
     println!("  --prove <fact>   Prove a specific fact");
-    println!("  --help           Show this help message");
-    println!();
+    println!("  --help           Show this help message\n");
     println!("FILE FORMAT:");
     println!("  Facts:    parent(anna, bob).");
     println!("  Rules:    parent(x?, y?) & parent(y?, z?) -> grandparent(x?, z?).");

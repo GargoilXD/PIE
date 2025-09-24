@@ -1,0 +1,24 @@
+# Company organizational structure
+employee(john, engineering, 50000).
+employee(sarah, engineering, 55000).
+employee(mike, sales, 45000).
+employee(lisa, marketing, 48000).
+employee(tom, engineering, 60000).
+employee(emily, sales, 52000).
+
+manager(tom, john).
+manager(tom, sarah).
+manager(lisa, mike).
+manager(lisa, emily).
+
+department(engineering, tech).
+department(sales, business).
+department(marketing, business).
+
+# Business rules
+manager(m?, e?) & employee(e?, dept?, salary?) -> manages(m?, e?, dept?).
+employee(e?, dept?, salary?) & salary? > 50000 -> senior_employee(e?).
+manager(m?, e1?) & manager(m?, e2?) & e1? != e2? -> team(m?, e1?, e2?).
+employee(e?, dept?, salary?) & department(dept?, Division) -> division_employee(e?, Division).
+
+manages(m?, e?, dept?) & senior_employee(m?) -> senior_manager(m?, dept?).

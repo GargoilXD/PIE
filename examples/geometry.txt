@@ -1,0 +1,32 @@
+# Basic geometric relationships
+shape(triangle).
+shape(square).
+shape(circle).
+shape(rectangle).
+
+sides(triangle, 3).
+sides(square, 4).
+sides(rectangle, 4).
+sides(circle, 0).
+
+angles(triangle, 3).
+angles(square, 4).
+angles(rectangle, 4).
+
+right_angles(square, 4).
+right_angles(rectangle, 4).
+
+equal_sides(square, 4).
+equal_sides(triangle, 3).
+
+# Geometric rules
+shape(x?) & sides(x?, 3) -> triangle(x?).
+shape(x?) & sides(x?, 4) & equal_sides(x?, 4) -> square(x?).
+shape(x?) & sides(x?, 4) & right_angles(x?, 4) -> rectangle(x?).
+shape(x?) & sides(x?, 0) -> circle(x?).
+
+triangle(x?) & equal_sides(x?, 3) -> equilateral(x?).
+triangle(x?) & equal_sides(x?, 2) -> isosceles(x?).
+triangle(x?) & equal_sides(x?, 0) -> scalene(x?).
+
+equal_sides(triangle, 3) -> equilateral_triangle(triangle).

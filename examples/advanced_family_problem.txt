@@ -1,0 +1,44 @@
+# Advanced family relationships with multiple generations
+gender(male).
+gender(female).
+
+person(abena, female).
+person(kofi, male).
+person(esi, female).
+person(yaw, male).
+person(ama, female).
+person(kwame, male).
+person(akosua, female).
+person(kwabena, male).
+
+mother(abena, kofi).
+mother(abena, esi).
+mother(esi, yaw).
+mother(esi, ama).
+mother(ama, kwame).
+mother(ama, akosua).
+
+father(kwabena, kofi).
+father(kwabena, esi).
+father(yaw, kwame).
+father(yaw, akosua).
+
+married(kofi, ama).
+married(yaw, esi).
+
+# Complex relationship rules
+father(x?, y?) -> parent(x?, y?)
+mother(x?, y?) -> parent(x?, y?)
+
+parent(x?, y?) & parent(x?, z?) & y? != z? -> siblings(y?, z?).
+siblings(x?, y?) & person(x?, male) -> brother(x?, y?).
+siblings(x?, y?) & person(x?, female) -> sister(x?, y?).
+
+parent(x?, y?) & parent(y?, z?) -> grandparent(x?, z?).
+grandparent(x?, y?) & person(y?, male) -> grandson(y?, x?).
+grandparent(x?, y?) & person(y?, female) -> granddaughter(y?, x?).
+
+parent(x?, y?) & parent(x?, z?) & parent(w?, y?) & parent(w?, z?) & x? != w? -> spouses(x?, w?).
+
+parent(x?, y?) & spouses(x?, z?) -> stepparent(z?, y?).
+siblings(x?, y?) & parent(z?, x?) & !parent(z?, y?) & parent(w?, y?) & spouses(z?, w?) -> stepsiblings(x?, y?).

@@ -1,0 +1,7 @@
+# Facts
+visible(zergling_1).
+
+# Rules
+visible(unit?) & detected(unit?) -> can_attack(unit?).
+
+# can_attack(zergling_1) should be false  

@@ -1,0 +1,50 @@
+# Animal classification example
+has_feathers(bird).
+has_fur(mammal).
+lays_eggs(bird).
+lays_eggs(reptile).
+gives_milk(mammal).
+can_fly(bird).
+can_swim(fish).
+has_scales(fish).
+has_scales(reptile).
+
+# Specific animals
+animal(eagle).
+animal(penguin).
+animal(shark).
+animal(salmon).
+animal(lion).
+animal(whale).
+animal(snake).
+animal(turtle).
+
+# Properties
+has_feathers(eagle).
+can_fly(eagle).
+has_feathers(penguin).
+can_swim(penguin).
+has_scales(shark).
+can_swim(shark).
+has_scales(salmon).
+can_swim(salmon).
+has_fur(lion).
+gives_milk(lion).
+has_fur(whale).
+gives_milk(whale).
+can_swim(whale).
+has_scales(snake).
+lays_eggs(snake).
+has_scales(turtle).
+lays_eggs(turtle).
+can_swim(turtle).
+
+# Classification rules
+animal(x?) & has_feathers(x?) -> bird(x?).
+animal(x?) & has_fur(x?) & gives_milk(x?) -> mammal(x?).
+animal(x?) & has_scales(x?) & can_swim(x?) -> fish(x?).
+animal(x?) & has_scales(x?) & lays_eggs(x?) -> reptile(x?).
+
+bird(x?) & can_fly(x?) -> flying_bird(x?).
+bird(x?) & can_swim(x?) -> swimming_bird(x?).
+mammal(x?) & can_swim(x?) -> marine_mammal(x?).

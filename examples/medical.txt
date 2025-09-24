@@ -1,0 +1,28 @@
+# Simple medical diagnosis system
+symptom(fever).
+symptom(cough).
+symptom(headache).
+symptom(rash).
+symptom(sore_throat).
+symptom(runny_nose).
+
+disease(flu).
+disease(common_cold).
+disease(measles).
+disease(strep_throat).
+
+has_symptom(patient1, fever).
+has_symptom(patient1, cough).
+has_symptom(patient1, headache).
+has_symptom(patient2, rash).
+has_symptom(patient2, fever).
+has_symptom(patient3, sore_throat).
+has_symptom(patient3, fever).
+
+# Diagnosis rules
+has_symptom(p?, fever) & has_symptom(p?, cough) & has_symptom(p?, headache) -> possible_diagnosis(p?, flu).
+has_symptom(p?, runny_nose) & has_symptom(p?, sore_throat) -> possible_diagnosis(p?, common_cold).
+has_symptom(p?, rash) & has_symptom(p?, fever) -> possible_diagnosis(p?, measles).
+has_symptom(p?, sore_throat) & has_symptom(p?, fever) & !has_symptom(p?, cough) -> possible_diagnosis(p?, strep_throat).
+
+possible_diagnosis(p?, d?) & severe_symptoms(p?) -> recommend_doctor(p?).
