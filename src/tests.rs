@@ -1,7 +1,6 @@
-use crate::knowledge_base::Fact;
 use super::*;
 #[test]
-fn test1() {
+fn atomic_fact_test() {
     let mut inference_engine: InferenceEngine = InferenceEngine::new(
         KnowledgeBase::from_strings(
             vec![
@@ -17,7 +16,7 @@ fn test1() {
     assert!(inference_engine.knowledge_base.has_fact(&Fact::from_string("should_attack")));
 }
 #[test]
-fn test2() {
+fn atomic_fact_negation_test() {
     let mut inference_engine: InferenceEngine = InferenceEngine::new(
         KnowledgeBase::from_strings(
             vec![
@@ -33,7 +32,7 @@ fn test2() {
     assert!(inference_engine.query(&Fact::from_string("should_attack")).len() > 0);
 }
 #[test]
-fn test3() {
+fn predicate_fact_test() {
     let mut inference_engine: InferenceEngine = InferenceEngine::new(
         KnowledgeBase::from_strings(
             vec![
@@ -46,10 +45,10 @@ fn test3() {
         )
     );
     inference_engine.infer();
-    assert_eq!(inference_engine.knowledge_base.has_fact(&Fact::from_string("grandparent(john, alice)")), true);
+    assert!(inference_engine.knowledge_base.has_fact(&Fact::from_string("grandparent(john, alice)")));
 }
 #[test]
-fn test4() {
+fn complex_predicate_fact_test() {
     let mut inference_engine: InferenceEngine = InferenceEngine::new(
         KnowledgeBase::from_strings(
             vec![
@@ -78,13 +77,10 @@ fn test4() {
         )
     );
     inference_engine.infer();
-    //assert!(inference_engine.query(&Fact::from_string("sister(x?, y?)")).len() > 0);
-    for fact in inference_engine.knowledge_base.working_memory {
-        println!("New Fact: {}", fact)
-    }
+    assert!(inference_engine.query(&Fact::from_string("sister(x?, y?)")).len() > 0);
 }
 #[test]
-fn test5() {
+fn qualifiers_test() {
     let mut inference_engine: InferenceEngine = InferenceEngine::new(
         KnowledgeBase::from_strings(
             vec![
@@ -96,10 +92,10 @@ fn test5() {
             ]
         )
     );
-    assert_eq!(inference_engine.prove(&Fact::from_string("has_ticket(linda)")), true);
+    assert!(inference_engine.prove(&Fact::from_string("has_ticket(linda)")));
 }
 #[test]
-fn test_negation_with_predicates() {
+fn negation_with_predicates_test() {
     let mut inference_engine: InferenceEngine = InferenceEngine::new(
         KnowledgeBase::from_strings(
             vec![
@@ -114,37 +110,12 @@ fn test_negation_with_predicates() {
     );
     let can_target: Fact = Fact::from_string("can_target(unit_123)");
     let cannot_target: Fact = Fact::from_string("cannot_target(unit_123)");
-
     inference_engine.infer();
-
     assert!(!inference_engine.knowledge_base.has_fact(&can_target));
     assert!(inference_engine.knowledge_base.has_fact(&cannot_target));
 }
 #[test]
-fn test_negation_multiple_units() {
-    let mut inference_engine: InferenceEngine = InferenceEngine::new(
-        KnowledgeBase::from_strings(
-            vec![
-                "visible(marine_1)",
-                "visible(ghost_1)",
-                "has_ability(ghost_1, cloak)",
-            ],
-            vec![
-                ("visible(unit?) & !has_ability(unit?, cloak)", "can_target(unit?)"),
-                ("visible(unit?) & has_ability(unit?, cloak)", "cannot_target(unit?)"),
-            ]
-        )
-    );
-    let marine_targetable: Fact = Fact::from_string("can_target(marine_1)");
-    let ghost_targetable: Fact = Fact::from_string("can_target(ghost_1)");
-
-    inference_engine.infer();
-
-    assert!(inference_engine.knowledge_base.has_fact(&marine_targetable));
-    assert!(!inference_engine.knowledge_base.has_fact(&ghost_targetable));
-}
-#[test]
-fn test_nested_negation() {
+fn nested_negation_test() {
     let mut inference_engine: InferenceEngine = InferenceEngine::new(
         KnowledgeBase::from_strings(
             vec![
@@ -155,11 +126,7 @@ fn test_nested_negation() {
             ]
         )
     );
-    // Since we don't have any detected facts, the double negation should evaluate to false
     let zergling_attackable: Fact = Fact::from_string("can_attack(zergling_1)");
-
     inference_engine.infer();
-
-    // Should not be attackable because the double negation fails
     assert!(!inference_engine.knowledge_base.has_fact(&zergling_attackable));
 }

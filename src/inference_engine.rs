@@ -2,15 +2,7 @@ use std::collections::HashMap;
 
 use crate::knowledge_base::*;
 
-/// Pressupositions:
-/// 1. Facts and rules are well-formed.
-/// 2. No contradictory facts exist in the knowledge base.
-/// 3. Rules do not create contradictions when applied.
-/// 4. The knowledge base is finite and does not contain cycles that could lead to infinite loops during inference.
-/// 5. Variables in facts and rules are properly scoped and do not conflict with each other
-/// 6. The inference engine operates under the closed-world assumption, meaning that any fact not present in the knowledge base is considered false.
-/// 7. The inference engine uses a depth-first search strategy for backward chaining and a breadth-first strategy for forward chaining.
-/// 8. The inference engine does not support probabilistic reasoning or uncertainty in facts or rules
+/// The inference engine operates under the closed-world assumption, meaning that any fact not present in the knowledge base is considered false.
 
 pub struct InferenceEngine { pub knowledge_base: KnowledgeBase, debug: bool }
 impl InferenceEngine {
@@ -236,10 +228,10 @@ impl InferenceEngine {
                 output.push(self.apply_substitution(query, &substitution).to_string());
             }
         }
-        if output.is_empty() {
-            String::from("No")
+        if query.is_negative() {
+            if output.is_empty() { String::from("Yes") } else { output.join(",\n") }
         } else {
-            output.join(",\n")
+            if output.is_empty() { String::from("No") } else { output.join(",\n") }
         }
     }
     fn evaluate_antecedents(&self, antecedents: &Vec<AntecedentItem>, fact_evaluator: &mut impl FnMut(&Fact) -> bool, operation_evaluator: &impl Fn(&AntecedentItem, &Fact, &Fact) -> bool) -> bool {

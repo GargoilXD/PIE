@@ -3,8 +3,11 @@ use std::vec;
 mod inference_engine;
 mod knowledge_base;
 
+#[cfg(test)]
+mod tests;
+
 use crate::inference_engine::InferenceEngine;
-use crate::knowledge_base::KnowledgeBase;
+use crate::knowledge_base::{Fact, KnowledgeBase};
 
 fn main() {
     let mut inference_engine: InferenceEngine = InferenceEngine::new(
@@ -42,11 +45,8 @@ fn main() {
             println!("  {}", fact);
         }
     } else {
-        let fact: knowledge_base::Fact = knowledge_base::Fact::from_string("brother(kofi, osei)");
+        let fact: Fact = Fact::from_string("brother(kofi, osei)");
         inference_engine.prove(&fact);
         println!("Has query: {}\n{}", fact, inference_engine.query(&fact));
     }
 }
-
-#[cfg(test)]
-mod tests;
