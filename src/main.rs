@@ -9,7 +9,7 @@ mod tests;
 use crate::inference_engine::InferenceEngine;
 use crate::knowledge_base::{Fact, KnowledgeBase};
 
-const DEFAULT_FILE: &str = "pie files/family relationships.txt";
+const DEFAULT_FILE: &str = "./examples/input.txt";
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -110,9 +110,13 @@ fn main() {
         }
     } else {
         inference_engine.infer();
-        println!("New facts:");
-        for fact in &inference_engine.knowledge_base.working_memory {
-            println!("  {}", fact);
+        if inference_engine.knowledge_base.working_memory.is_empty() {
+            println!("No new facts")
+        } else {
+            println!("New facts:");
+            for fact in &inference_engine.knowledge_base.working_memory {
+                println!("  {}", fact);
+            }
         }
     }
 }
