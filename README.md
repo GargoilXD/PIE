@@ -43,10 +43,10 @@ cargo run
 
 #### Available Command-Line Options
 
-- `--file` or `-f <path>`: Specify a custom knowledge base file.
+- `--file <path>` or `-f <path>`: Specify a custom knowledge base file.
 - `--debug` or `-d`: Enable debug mode.
 - `--query` or `-q`: Enter interactive query mode.
-- `--prove` or `-p <fact>`: Prove a specific fact.
+- `--prove <fact>` or `-p <fact>`: Prove a specific fact.
 - `--help` or `-h`: Display help message.
 
 ### Running Tests

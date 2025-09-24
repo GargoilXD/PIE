@@ -132,6 +132,13 @@ impl InferenceEngine {
                             antecedents.push(fact.clone());
                         }
                     }
+                    /*let mut antecedents: Vec<Fact> = Vec::new();
+                    for antecedent in unproven_antecedents {
+                        if !process(engine, &antecedent, proven_facts) {
+                            antecedents.push(antecedent);
+                        }
+                    }*/
+                    //antecedents could be unproven
                     let valid_substitutions: Vec<HashMap<String, Fact>> = engine.find_valid_substitutions(&antecedents, 0, &consequent_substitution);
                     for valid_substitution in valid_substitutions {
                         let all_antecedents_proven: bool = engine.evaluate_antecedents(

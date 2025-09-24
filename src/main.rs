@@ -153,13 +153,13 @@ fn parse_file(file_path: &str) -> Result<KnowledgeBase, String> {
 fn print_help() {
     println!("Usage: pie <path> [OPTIONS]\n");
     println!("OPTIONS:");
-    println!("  --file <path>    Path to knowledge base file (optional if path is first argument)");
-    println!("  --debug          Enable debug mode");
-    println!("  --query          Enter interactive query mode, type 'quit' to exit");
-    println!("  --prove <fact>   Prove a specific fact");
-    println!("  --help           Show this help message\n");
+    println!("  --file <path> or -f <path>    Path to knowledge base file (optional if path is first argument)");
+    println!("  --debug or -d                 Enable debug mode");
+    println!("  --query or -q                 Enter interactive query mode, type 'quit' to exit");
+    println!("  --prove <fact> or -p <fact>   Prove a specific fact");
+    println!("  --help or -h                  Show this help message\n");
     println!("FILE FORMAT:");
+    println!("  Comments: Lines starting with #");
     println!("  Facts:    parent(anna, bob).");
     println!("  Rules:    parent(x?, y?) & parent(y?, z?) -> grandparent(x?, z?).");
-    println!("  Comments: Lines starting with #");
 }
