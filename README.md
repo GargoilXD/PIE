@@ -1,11 +1,13 @@
 # Pie
 
-Pie is a simple inference engine and knowledge base system in Rust. The project aims to provide efficient and scalable processing capabilities, leveraging Rust's safety and performance features, as well as creating a powerful inference engine.
+Pie is a simple inference engine and knowledge base system in Rust. The project aims to provide efficient and scalable processing capabilities by leveraging Rust's safety and performance features, as well as by providing a powerful inference engine.
 
 ## Features
 
 - **Inference Engine**: Processes and evaluates logic rules.
 - **Knowledge Base**: Manages and stores dynamic data for inference and decision-making.
+- **Interactive Query Mode**: Allows users to enter queries interactively.
+- **Proof Mode**: Prove specific facts using command-line options.
 - Modular design for ease of extension and integration.
 
 ## Project Structure
@@ -38,6 +40,14 @@ To run the project, execute:
 ```bash
 cargo run
 ```
+
+#### Available Command-Line Options
+
+- `--file` or `-f <path>`: Specify a custom knowledge base file.
+- `--debug` or `-d`: Enable debug mode.
+- `--query` or `-q`: Enter interactive query mode.
+- `--prove` or `-p <fact>`: Prove a specific fact.
+- `--help` or `-h`: Display help message.
 
 ### Running Tests
 

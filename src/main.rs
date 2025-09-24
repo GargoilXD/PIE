@@ -9,6 +9,8 @@ mod tests;
 use crate::inference_engine::InferenceEngine;
 use crate::knowledge_base::{Fact, KnowledgeBase};
 
+const DEFAULT_FILE: &str = "pie files/family relationships.txt";
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let mut file_path: Option<String> = None;
@@ -64,10 +66,10 @@ fn main() {
             }
         }
     } else {
-        match parse_file("src/input.txt") {
+        match parse_file(DEFAULT_FILE) {
             Ok(knowledge_base) => knowledge_base,
             Err(error) => {
-                eprintln!("Error reading file 'src/input.txt': {}", error);
+                eprintln!("Error reading file '{}': {}", DEFAULT_FILE, error);
                 return;
             }
         }
