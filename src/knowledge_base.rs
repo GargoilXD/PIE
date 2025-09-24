@@ -55,15 +55,15 @@ impl KnowledgeBase {
         self.axiomatic_rules.clear();
         self.working_memory.clear();
     }
-    pub fn from_strings(facts: Vec<&str>, rules: Vec<(&str, &str)>) -> Self {
+    pub fn from_strings(facts: Vec<&str>, rules: Vec<(&str, &str)>) -> Result<Self, String> {
         let mut knowledge_base: KnowledgeBase = KnowledgeBase::new();
         for fact_str in facts {
-            knowledge_base.add_axiomatic_fact(Fact::from_string(fact_str));
+            knowledge_base.add_axiomatic_fact(Fact::parse(fact_str)?);
         }
         for (antecedents, consequent) in rules {
-            knowledge_base.add_axiomatic_rule(Rule::from_string(antecedents, consequent));
+            knowledge_base.add_axiomatic_rule(Rule::parse(antecedents, consequent)?);
         }
-        knowledge_base
+        Ok(knowledge_base)
     }
 }
 impl fmt::Display for KnowledgeBase {
@@ -116,15 +116,15 @@ impl Fact {
             Fact::Variable(_) => self.clone()
         }
     }
-    pub fn from_string(string: &str) -> Self {
+    pub fn parse(string: &str) -> Result<Self, String> {
         if string.ends_with('?') {
-            Fact::Variable(Variable::from_string(string))
+            Ok(Fact::Variable(Variable::parse(string)?))
         } else if string.contains('(') && string.contains(')') {
-            Fact::Predicate(PredicateFact::from_string(string))
+            Ok(Fact::Predicate(PredicateFact::parse(string)?))
         } else if string.parse::<i32>().is_ok() {
-            Fact::Number(NumericFact::from_string(string))
+            Ok(Fact::Number(NumericFact::parse(string)))
         } else { // floats are atoms
-            Fact::Atomic(AtomicFact::from_string(string))
+            Ok(Fact::Atomic(AtomicFact::parse(string)))
         }
     }
 }
@@ -147,7 +147,7 @@ impl NumericFact {
     pub fn new(value: i32) -> Self {
         NumericFact { value }
     }
-    pub fn from_string(string: &str) -> Self {
+    pub fn parse(string: &str) -> Self {
         NumericFact::new(string.parse().unwrap())
     }
 }
@@ -172,7 +172,7 @@ impl AtomicFact {
     pub fn get_negated(&self) -> Self {
         AtomicFact::new(!self.positive, self.name.clone())
     }
-    pub fn from_string(string: &str) -> Self {
+    pub fn parse(string: &str) -> Self {
         let (positive, name) = if string.starts_with('!') {
             (false, string[1..].to_string())
         } else {
@@ -203,21 +203,20 @@ impl PredicateFact {
     pub fn get_negated(&self) -> Self {
         PredicateFact::new(!self.positive, self.name.clone(), self.arguments.clone())
     }
-    pub fn from_string(string: &str) -> Self {
+    pub fn parse(string: &str) -> Result<Self, String> {
         let (positive, rest) = if string.starts_with('!') {
             (false, &string[1..])
         } else {
             (true, string)
         };
-        let name_end = rest.find('(').unwrap_or(rest.len());
-        let name = rest[..name_end].to_string();
-        let terms_str = &rest[name_end+1..rest.len()-1];
-        let terms: Vec<Fact> = if terms_str.trim().is_empty() {
-            Vec::new()
-        } else {
-            terms_str.split(',').map(|s| Fact::from_string(s.trim())).collect()
-        };
-        PredicateFact::new(positive, name, terms)
+        let name_end: usize = rest.find('(').unwrap_or(rest.len());
+        let name: String = rest[..name_end].to_string();
+        let arguments_str: &str = &rest[name_end+1..rest.len()-1];
+        let mut arguments: Vec<Fact> = Vec::new();
+        for argument in arguments_str.split(',') {
+            arguments.push(Fact::parse(argument.trim())?);
+        }
+        Ok(PredicateFact::new(positive, name, arguments))
     }
 }
 impl fmt::Display for PredicateFact {
@@ -235,13 +234,12 @@ impl Variable {
     pub fn new(name: String) -> Self {
         Variable { name }
     }
-    pub fn from_string(string: &str) -> Self {
-        let name = if string.ends_with('?') {
-            string[..string.len()-1].to_string()
+    pub fn parse(string: &str) -> Result<Self, String> {
+        if string.ends_with('?') {
+            Ok(Variable::new(string[..string.len()-1].to_string()))
         } else {
-            string.to_string()
-        };
-        Variable::new(name)
+            Err(String::from(format!("Invalid variable: {}", string)))
+        }
     }
 }
 impl fmt::Display for Variable {
@@ -259,10 +257,10 @@ impl Rule {
     pub fn new(antecedents: Vec<AntecedentItem>, consequent: Fact) -> Self {
         Rule { antecedents, consequent }
     }
-    pub fn from_string(antecedents: &str, consequent: &str) -> Self {
-        let antecedents_items: Vec<AntecedentItem> = Self::parse_antecedents(antecedents);
-        let consequent_fact: Fact = Fact::from_string(consequent);
-        Rule::new(antecedents_items, consequent_fact).validate()
+    pub fn parse(antecedents: &str, consequent: &str) -> Result<Self, String> {
+        let antecedents_items: Vec<AntecedentItem> = Self::parse_antecedents(antecedents)?;
+        let consequent_fact: Fact = Fact::parse(consequent)?;
+        Ok(Rule::new(antecedents_items, consequent_fact).validate())
     }
     pub fn validate(self) -> Self {
         let mut stack_height:u32 = 0;
@@ -282,12 +280,12 @@ impl Rule {
         }
         self
     }
-    fn parse_antecedents(input: &str) -> Vec<AntecedentItem> {
-        if input.trim().is_empty() { return Vec::new(); }
+    fn parse_antecedents(input: &str) -> Result<Vec<AntecedentItem>, String> {
+        if input.trim().is_empty() { return Err(String::from("Rules must have antecedents")); }
         fn tokenize(input: &str) -> Vec<String> {
             let mut tokens: Vec<String> = Vec::new();
             let mut current_token: String = String::new();
-            let mut comma_space = false;
+            let mut comma_space: bool = false;
             for ch in input.chars() {
                 match ch {
                     ' ' | '\t' | '\n' => {
@@ -322,7 +320,7 @@ impl Rule {
             }
             tokens
         }
-        fn infix_to_postfix(tokens: &[String]) -> Vec<AntecedentItem> {
+        fn infix_to_postfix(tokens: &[String]) -> Result<Vec<AntecedentItem>, String> {
             let mut output: Vec<AntecedentItem> = Vec::new();
             let mut operator_stack: Vec<String> = Vec::new();
             for token in tokens {
@@ -331,7 +329,7 @@ impl Rule {
                         while let Some(op) = operator_stack.last() {
                             if matches!(op.as_str(), "&" | ">" | ">=" | "<" | "<=" | "==" | "!=") {
                                 let popped_op: String = operator_stack.pop().unwrap();
-                                output.push(token_to_antecedent_item(&popped_op));
+                                output.push(token_to_antecedent_item(&popped_op)?);
                             } else {
                                 break;
                             }
@@ -342,7 +340,7 @@ impl Rule {
                         while let Some(op) = operator_stack.last() {
                             if matches!(op.as_str(), "|" | "&" | ">" | ">=" | "<" | "<=" | "==" | "!=") {
                                 let popped_op: String = operator_stack.pop().unwrap();
-                                output.push(token_to_antecedent_item(&popped_op));
+                                output.push(token_to_antecedent_item(&popped_op)?);
                             } else {
                                 break;
                             }
@@ -353,7 +351,7 @@ impl Rule {
                         while let Some(op) = operator_stack.last() {
                             if matches!(op.as_str(), ">" | ">=" | "<" | "<=" | "==" | "!=") {
                                 let popped_op: String = operator_stack.pop().unwrap();
-                                output.push(token_to_antecedent_item(&popped_op));
+                                output.push(token_to_antecedent_item(&popped_op)?);
                             } else {
                                 break;
                             }
@@ -364,7 +362,7 @@ impl Rule {
                         while let Some(op) = operator_stack.last() {
                             if matches!(op.as_str(), ">" | ">=" | "<" | "<=" | "==" | "!=") {
                                 let popped_op: String = operator_stack.pop().unwrap();
-                                output.push(token_to_antecedent_item(&popped_op));
+                                output.push(token_to_antecedent_item(&popped_op)?);
                             } else {
                                 break;
                             }
@@ -375,7 +373,7 @@ impl Rule {
                         while let Some(op) = operator_stack.last() {
                             if matches!(op.as_str(), ">" | ">=" | "<" | "<=" | "==" | "!=") {
                                 let popped_op: String = operator_stack.pop().unwrap();
-                                output.push(token_to_antecedent_item(&popped_op));
+                                output.push(token_to_antecedent_item(&popped_op)?);
                             } else {
                                 break;
                             }
@@ -386,7 +384,7 @@ impl Rule {
                         while let Some(op) = operator_stack.last() {
                             if matches!(op.as_str(), ">" | ">=" | "<" | "<=" | "==" | "!=") {
                                 let popped_op: String = operator_stack.pop().unwrap();
-                                output.push(token_to_antecedent_item(&popped_op));
+                                output.push(token_to_antecedent_item(&popped_op)?);
                             } else {
                                 break;
                             }
@@ -397,7 +395,7 @@ impl Rule {
                         while let Some(op) = operator_stack.last() {
                             if matches!(op.as_str(), ">" | ">=" | "<" | "<=" | "==" | "!=") {
                                 let popped_op: String = operator_stack.pop().unwrap();
-                                output.push(token_to_antecedent_item(&popped_op));
+                                output.push(token_to_antecedent_item(&popped_op)?);
                             } else {
                                 break;
                             }
@@ -408,7 +406,7 @@ impl Rule {
                         while let Some(op) = operator_stack.last() {
                             if matches!(op.as_str(), ">" | ">=" | "<" | "<=" | "==" | "!=") {
                                 let popped_op: String = operator_stack.pop().unwrap();
-                                output.push(token_to_antecedent_item(&popped_op));
+                                output.push(token_to_antecedent_item(&popped_op)?);
                             } else {
                                 break;
                             }
@@ -419,19 +417,19 @@ impl Rule {
                     "]" => {
                         while let Some(op) = operator_stack.pop() {
                             if op == "[" { break; }
-                            output.push(token_to_antecedent_item(&op));
+                            output.push(token_to_antecedent_item(&op)?);
                         }
                     }
-                    _ => output.push(AntecedentItem::Fact(Fact::from_string(token.as_str())))
+                    _ => output.push(AntecedentItem::Fact(Fact::parse(token.as_str())?))
                 }
             }
             while let Some(op) = operator_stack.pop() {
-                output.push(token_to_antecedent_item(&op));
+                output.push(token_to_antecedent_item(&op)?);
             }
-            output
+            Ok(output)
         }
-        fn token_to_antecedent_item(token: &str) -> AntecedentItem {
-            match token {
+        fn token_to_antecedent_item(token: &str) -> Result<AntecedentItem, String> {
+            Ok(match token {
                 "&" => AntecedentItem::And,
                 "|" => AntecedentItem::Or,
                 "==" => AntecedentItem::Equals,
@@ -440,8 +438,8 @@ impl Rule {
                 ">=" => AntecedentItem::GreaterOrEquals,
                 "<" => AntecedentItem::LesserThan,
                 "<=" => AntecedentItem::LesserOrEquals,
-                _ => AntecedentItem::Fact(Fact::from_string(token)),
-            }
+                _ => AntecedentItem::Fact(Fact::parse(token)?),
+            })
         }
         let tokens: Vec<String> = tokenize(input);
         infix_to_postfix(&tokens)

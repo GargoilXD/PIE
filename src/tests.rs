@@ -10,10 +10,10 @@ fn atomic_fact_test() {
             vec![
                 ("player_nearby & has_ammo", "should_attack")
             ]
-        )
+        ).expect("Impossible")
     );
     inference_engine.infer();
-    assert!(inference_engine.knowledge_base.has_fact(&Fact::from_string("should_attack")));
+    assert!(inference_engine.knowledge_base.has_fact(&Fact::parse("should_attack").expect("Impossible")));
 }
 #[test]
 fn atomic_fact_negation_test() {
@@ -26,10 +26,10 @@ fn atomic_fact_negation_test() {
             vec![
                 ("player_nearby & !has_ammo", "should_attack")
             ]
-        )
+        ).expect("Impossible")
     );
     inference_engine.infer();
-    assert!(inference_engine.query(&Fact::from_string("should_attack")).len() > 0);
+    assert!(inference_engine.query(&Fact::parse("should_attack").expect("Impossible")).len() > 0);
 }
 #[test]
 fn predicate_fact_test() {
@@ -42,10 +42,10 @@ fn predicate_fact_test() {
             vec![
                 ("parent(x?, y?) & parent(y?, z?)", "grandparent(x?, z?)")
             ]
-        )
+        ).expect("Impossible")
     );
     inference_engine.infer();
-    assert!(inference_engine.knowledge_base.has_fact(&Fact::from_string("grandparent(john, alice)")));
+    assert!(inference_engine.knowledge_base.has_fact(&Fact::parse("grandparent(john, alice)").expect("Impossible")));
 }
 #[test]
 fn complex_predicate_fact_test() {
@@ -74,10 +74,10 @@ fn complex_predicate_fact_test() {
                 ("person(x?, female) & mother(z?, x?) & mother(z?, y?) & x? != y?", "sister(x?, y?)"),
                 ("person(x?, male) & mother(z?, x?) & mother(z?, y?) & x? != y?", "brother(x?, y?)")
             ]
-        )
+        ).expect("Impossible")
     );
     inference_engine.infer();
-    assert!(inference_engine.query(&Fact::from_string("sister(x?, y?)")).len() > 0);
+    assert!(inference_engine.query(&Fact::parse("sister(x?, y?)").expect("Impossible")).len() > 0);
 }
 #[test]
 fn qualifiers_test() {
@@ -90,9 +90,9 @@ fn qualifiers_test() {
             vec![
                 ("has_car(x?)", "has_ticket(x?)")
             ]
-        )
+        ).expect("Impossible")
     );
-    assert!(inference_engine.prove(&Fact::from_string("has_ticket(linda)")));
+    assert!(inference_engine.prove(&Fact::parse("has_ticket(linda)").expect("Impossible")));
 }
 #[test]
 fn negation_with_predicates_test() {
@@ -106,10 +106,10 @@ fn negation_with_predicates_test() {
                 ("visible(unit?) & !has_ability(unit?, cloak)", "can_target(unit?)"),
                 ("visible(unit?) & has_ability(unit?, cloak)", "cannot_target(unit?)"),
             ]
-        )
+        ).expect("Impossible")
     );
-    let can_target: Fact = Fact::from_string("can_target(unit_123)");
-    let cannot_target: Fact = Fact::from_string("cannot_target(unit_123)");
+    let can_target: Fact = Fact::parse("can_target(unit_123)").expect("Impossible");
+    let cannot_target: Fact = Fact::parse("cannot_target(unit_123)").expect("Impossible");
     inference_engine.infer();
     assert!(!inference_engine.knowledge_base.has_fact(&can_target));
     assert!(inference_engine.knowledge_base.has_fact(&cannot_target));
@@ -124,9 +124,9 @@ fn nested_negation_test() {
             vec![
                 ("visible(unit?) & detected(unit?)", "can_attack(unit?)"),
             ]
-        )
+        ).expect("Impossible")
     );
-    let zergling_attackable: Fact = Fact::from_string("can_attack(zergling_1)");
+    let zergling_attackable: Fact = Fact::parse("can_attack(zergling_1)").expect("Impossible");
     inference_engine.infer();
     assert!(!inference_engine.knowledge_base.has_fact(&zergling_attackable));
 }
